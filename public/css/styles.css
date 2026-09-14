@@ -1,0 +1,70 @@
+/* Monkey Journal - global styles.
+   Component styling lives inline in the React components; only the reset,
+   the shared typography classes, and document-level rules are here. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #ece8df;
+  color: #1a1a1a;
+  font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+#root { height: 100%; }
+
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: #9a958d;
+  font-weight: 500;
+}
+
+.page-title {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.6px;
+  line-height: 1.05;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #5a554c;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.icon-btn:hover:not(:disabled) { background: rgba(26, 26, 26, 0.05); }
+.icon-btn:disabled { cursor: default; }
+
+/* Hide scrollbars inside scroll regions so the app reads as native */
+[data-scroll] { scrollbar-width: none; }
+[data-scroll]::-webkit-scrollbar { display: none; }
+
+button, textarea, input { font-family: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+
+textarea::placeholder,
+input::placeholder { color: #9a958d; opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

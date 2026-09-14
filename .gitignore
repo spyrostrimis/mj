@@ -1,0 +1,13 @@
+node_modules/
+
+# Build output - Cloudflare Pages regenerates this on every deploy
+public/assets/
+
+# Wrangler local state (includes the local D1 sqlite file)
+.wrangler/
+
+# Never commit secrets
+.dev.vars
+.env
+
+.DS_Store
