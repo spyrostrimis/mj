@@ -7,9 +7,10 @@ import { TodayScreen } from './Today.jsx';
 import { InsightsScreen } from './Insights.jsx';
 import { CalendarScreen } from './Calendar.jsx';
 import { QuickSheet } from './Sheet.jsx';
+import { HalfSheet } from './HalfSheet.jsx';
 import { LockScreen } from './Lock.jsx';
 import { UnavailableScreen } from './Unavailable.jsx';
-import { loadFailure } from './data.js';
+import { loadFailure, removeHalf, restoreHalf, deleteFailure } from './data.js';
 import * as api from './api.js';
 
 const ACCENT   = '#8a6e4e';
@@ -164,6 +165,9 @@ export function App() {
   const [tab, setTab]           = useState('today');
   const [calendar, setCalendar] = useState(false);
   const [sheet, setSheet]       = useState(false);
+  // The half whose actions are open, with everything a rollback needs:
+  // { moment, who, half, index, lastHalf }.
+  const [target, setTarget]     = useState(null);
 
   const fetchEntries = async () => {
     try {
@@ -198,6 +202,32 @@ export function App() {
     }
   };
 
+  // The moment object is the same reference the feed rendered, so indexOf is
+  // exact. A -1 would only cost the restored half its tie-break position,
+  // since both screens re-derive order from date and time.
+  const openHalf = (moment, who) => setTarget({
+    moment,
+    who,
+    half: moment[who],
+    index: entries.indexOf(moment),
+    lastHalf: !moment[who === 'monkey' ? 'turtle' : 'monkey'],
+  });
+
+  const handleDeleteHalf = async () => {
+    if (!target) return;
+    const { who, half, moment, index } = target;
+    setTarget(null);
+    setEntries(prev => removeHalf(prev, who, half.id));   // optimistic
+    try {
+      // A 200 with deleted: 0 means it was already gone - the goal state
+      // either way, so there is nothing to undo and nothing to say.
+      await api.deleteEntry(half.id);
+    } catch (err) {
+      setEntries(prev => restoreHalf(prev, index, moment, who));
+      setError(deleteFailure(err));
+    }
+  };
+
   if (gate === 'checking') {
     return <PhoneFrame><Centered>{'Opening…'}</Centered></PhoneFrame>;
   }
@@ -222,14 +252,21 @@ export function App() {
   if (tab === 'insights') {
     screen = <InsightsScreen entries={entries} accent={ACCENT}/>;
   } else if (calendar) {
-    screen = <CalendarScreen entries={entries} accent={ACCENT} onBack={() => setCalendar(false)}/>;
+    screen = (
+      <CalendarScreen
+        entries={entries}
+        accent={ACCENT}
+        onHalfTap={openHalf}
+        onBack={() => setCalendar(false)}/>
+    );
   } else {
     screen = (
       <TodayScreen
         entries={entries}
         accent={ACCENT}
         onCal={() => setCalendar(true)}
-        onNew={() => setSheet(true)}/>
+        onNew={() => setSheet(true)}
+        onHalfTap={openHalf}/>
     );
   }
 
@@ -261,6 +298,12 @@ export function App() {
         accent={ACCENT}
         onClose={() => setSheet(false)}
         onSave={handleSave}/>
+
+      <HalfSheet
+        target={target}
+        accent={ACCENT}
+        onCancel={() => setTarget(null)}
+        onDelete={handleDeleteHalf}/>
     </PhoneFrame>
   );
 }

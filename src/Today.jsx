@@ -44,10 +44,13 @@ export function LangChip({ langKey, accent }) {
   );
 }
 
-function EntryHalf({ who, half, accent }) {
+// Tapping a half opens that half's actions. The button is styled to look
+// exactly like the text it wraps, so the feed reads as prose and only gains a
+// press state. Without onTap it stays plain text rather than a dead target.
+function EntryHalf({ who, half, accent, onTap }) {
   const Mascot = who === 'monkey' ? MonkeyTiny : TurtleTiny;
   const label  = who === 'monkey' ? 'Monkey' : 'I';
-  return (
+  const body = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Mascot size={14} color="#5a554c"/>
@@ -62,11 +65,24 @@ function EntryHalf({ who, half, accent }) {
       }}>{half.text}</div>
     </div>
   );
+
+  if (!onTap) return body;
+
+  return (
+    <button
+      type="button"
+      className="half-btn"
+      onClick={onTap}
+      aria-haspopup="dialog"
+      aria-label={who === 'monkey' ? "Monkey's half, actions" : 'My half, actions'}>
+      {body}
+    </button>
+  );
 }
 
 // A moment is a pair or a lone half. Only the halves that exist are drawn,
 // and the hairline between them only when there are two.
-export function EntryBlock({ entry, accent }) {
+export function EntryBlock({ entry, accent, onHalfTap }) {
   const present = [['monkey', entry.monkey], ['turtle', entry.turtle]]
     .filter(([, half]) => half);
 
@@ -79,7 +95,11 @@ export function EntryBlock({ entry, accent }) {
         }}/>
       );
     }
-    parts.push(<EntryHalf key={who} who={who} half={half} accent={accent}/>);
+    parts.push(
+      <EntryHalf
+        key={who} who={who} half={half} accent={accent}
+        onTap={onHalfTap && (() => onHalfTap(entry, who))}/>
+    );
   });
 
   return (
@@ -149,7 +169,7 @@ function FAB({ onClick, accent }) {
   );
 }
 
-export function TodayScreen({ entries, onCal, onNew, accent }) {
+export function TodayScreen({ entries, onCal, onNew, onHalfTap, accent }) {
   const groups     = groupByDate(entries);
   const todayGroup = groups.find(g => g.date === TODAY_ISO);
   const earlier    = groups.filter(g => g.date !== TODAY_ISO);
@@ -157,7 +177,7 @@ export function TodayScreen({ entries, onCal, onNew, accent }) {
   const renderDay = (list) =>
     list.map((e, i) => (
       <div key={e.id}>
-        <EntryBlock entry={e} accent={accent}/>
+        <EntryBlock entry={e} accent={accent} onHalfTap={onHalfTap}/>
         {i < list.length - 1 && (
           <div style={{ height: 1, background: 'rgba(26,26,26,0.06)' }}/>
         )}

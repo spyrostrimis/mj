@@ -69,7 +69,7 @@ function MonthGrid({ year, month, selectedISO, entriesByDate, accent, onSelect }
   );
 }
 
-export function CalendarScreen({ entries, onBack, accent }) {
+export function CalendarScreen({ entries, onBack, onHalfTap, accent }) {
   const entriesByDate = useMemo(() => {
     const m = {};
     for (const e of entries) (m[e.date] = m[e.date] || []).push(e);
@@ -164,7 +164,7 @@ export function CalendarScreen({ entries, onBack, accent }) {
           ) : (
             selDay.map((e, i) => (
               <div key={e.id}>
-                <EntryBlock entry={e} accent={accent}/>
+                <EntryBlock entry={e} accent={accent} onHalfTap={onHalfTap}/>
                 {i < selDay.length - 1 && (
                   <div style={{ height: 1, background: 'rgba(26,26,26,0.06)' }}/>
                 )}
