@@ -201,3 +201,33 @@ test('a single whose id equals another moment pair_id stays separate', async () 
   assert.equal(pair.monkey.text, 'made me tea', 'the pair keeps its own monkey half');
   assert.equal(pair.turtle.text, 'said thank you');
 });
+
+test('deleting one half of a pair leaves the other, and GET still returns one moment', async () => {
+  const env = newEnv();
+  await post(env, at('2026-01-01', '09:00', {
+    pairId: 'p1', monkey: monkey(), turtle: turtle(),
+  }));
+
+  const res = await del(env, 'm1');            // the half's own row id
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).deleted, 1, 'the monkey half only, not the pair');
+
+  const rows = rawRows(env);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].id, 't1');
+  assert.equal(rows[0].pair_id, 'p1', 'the survivor keeps its pair_id');
+
+  const feed = await get(env);
+  assert.equal(feed.length, 1, 'still one moment, not zero');
+  assert.equal(feed[0].id, 'p1', 'and it still answers to the pair id');
+  assert.equal(feed[0].pairId, 'p1');
+  assert.equal(feed[0].monkey, null);
+  assert.deepEqual(feed[0].turtle, { id: 't1', text: 'said thank you', lang: 'words' });
+
+  // Positive control on the same fixture: deleting the survivor does take the
+  // moment with it. Without this, every assertion above would hold just as
+  // well if DELETE had quietly done nothing.
+  assert.equal((await (await del(env, 't1')).json()).deleted, 1);
+  assert.deepEqual(await get(env), [], 'the last half takes the moment');
+  assert.equal(rawRows(env).length, 0);
+});
