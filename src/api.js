@@ -46,5 +46,11 @@ export const saveEntry = (entry) =>
     body: JSON.stringify(entry),
   });
 
-export const deleteEntry = (id) =>
-  request(`/api/entries/${encodeURIComponent(id)}`, { method: 'DELETE' });
+// kind names which id space the id is in: 'pair' for a moment's pairId, which
+// takes both halves, or 'half' for a row's own id, which takes exactly that
+// one. An unpaired moment is its half, so it goes as 'half'.
+export const deleteEntry = (id, kind) =>
+  request(
+    `/api/entries/${encodeURIComponent(id)}?kind=${encodeURIComponent(kind)}`,
+    { method: 'DELETE' }
+  );

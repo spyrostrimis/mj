@@ -146,7 +146,7 @@ These are known, not bugs to fix on sight. Work from the specific instruction gi
 
 - `TODAY` is read from the browser clock once per page load. A tab left open past midnight still shows yesterday.
 - Saving is optimistic: the moment appears immediately and is rolled back with a message if the write fails.
-- `DELETE /api/entries/:id` takes a moment's id as the feed sees it: a pair's `pair_id`, or a lone half's own id. Given a pair id it removes BOTH halves, so a pair is never left as an orphaned single. It still has no UI button, so removing anything from the live journal means a `--remote` command.
+- `DELETE /api/entries/:id?kind=pair|half` requires the kind, because a `pair_id` and a row id are different id spaces that may hold the same string. `kind=pair` removes every row of that pair, so a pair is never left as an orphaned single; `kind=half` removes exactly that one row by primary key, and an unpaired moment is deleted as its half. A missing or unknown kind is a 400. It still has no UI button, so removing anything from the live journal means a `--remote` command.
 - The app shell is public. Only `/api/*` data is locked.
 
 ## SCOPE

@@ -25,7 +25,18 @@ const get = async (env) => {
   return res.json();
 };
 
-const del = (env, id) => onRequestDelete({ params: { id }, env });
+// Built the way api.js builds it: the kind rides in the query string, so the
+// handler has to read a real Request to find it.
+const del = (env, id, kind) =>
+  onRequestDelete({
+    params: { id },
+    request: new Request(
+      `https://mj.test/api/entries/${encodeURIComponent(id)}` +
+        (kind === undefined ? '' : `?kind=${encodeURIComponent(kind)}`),
+      { method: 'DELETE' }
+    ),
+    env,
+  });
 
 const rawRows = (env) =>
   env.DB._raw.prepare('SELECT * FROM moments ORDER BY id').all();
@@ -147,7 +158,7 @@ test('deleting a pair removes both halves', async () => {
   await post(env, at('2026-01-02', '09:00', { monkey: monkey({ id: 'solo' }) }));
   assert.equal(rawRows(env).length, 3);
 
-  const res = await del(env, 'p1');
+  const res = await del(env, 'p1', 'pair');
   assert.equal(res.status, 200);
   assert.equal((await res.json()).deleted, 2, 'both halves of the pair');
 
@@ -163,7 +174,7 @@ test('deleting a single removes exactly one row', async () => {
   }));
   await post(env, at('2026-01-02', '09:00', { monkey: monkey({ id: 'solo' }) }));
 
-  const res = await del(env, 'solo');
+  const res = await del(env, 'solo', 'half');
   assert.equal((await res.json()).deleted, 1);
 
   const feed = await get(env);
@@ -208,7 +219,7 @@ test('deleting one half of a pair leaves the other, and GET still returns one mo
     pairId: 'p1', monkey: monkey(), turtle: turtle(),
   }));
 
-  const res = await del(env, 'm1');            // the half's own row id
+  const res = await del(env, 'm1', 'half');    // the half's own row id
   assert.equal(res.status, 200);
   assert.equal((await res.json()).deleted, 1, 'the monkey half only, not the pair');
 
@@ -227,7 +238,94 @@ test('deleting one half of a pair leaves the other, and GET still returns one mo
   // Positive control on the same fixture: deleting the survivor does take the
   // moment with it. Without this, every assertion above would hold just as
   // well if DELETE had quietly done nothing.
-  assert.equal((await (await del(env, 't1')).json()).deleted, 1);
+  assert.equal((await (await del(env, 't1', 'half')).json()).deleted, 1);
   assert.deepEqual(await get(env), [], 'the last half takes the moment');
   assert.equal(rawRows(env).length, 0);
+});
+
+// A pair and an unrelated lone half sharing one string. The app's id prefixes
+// keep this off the wire, but the server accepts it (see the GET test above),
+// so DELETE has to survive it on its own.
+const overlapping = async (env) => {
+  await post(env, at('2026-01-01', '09:00', {
+    pairId: 'x1', monkey: monkey({ id: 'm1' }), turtle: turtle({ id: 't1' }),
+  }));
+  await post(env, at('2026-01-02', '09:00', {
+    monkey: monkey({ id: 'x1', text: 'an unrelated single' }),
+  }));
+  assert.equal(rawRows(env).length, 3);
+  return env;
+};
+
+test('deleting the half whose id is another pair_id leaves that pair whole', async () => {
+  const env = await overlapping(newEnv());
+
+  const res = await del(env, 'x1', 'half');
+  assert.equal((await res.json()).deleted, 1, 'the single only, not the pair');
+
+  const feed = await get(env);
+  assert.equal(feed.length, 1);
+  assert.equal(feed[0].pairId, 'x1', 'the pair survives');
+  assert.ok(feed[0].monkey && feed[0].turtle, 'with both halves');
+
+  // Positive control on the same fixture: the pair really is reachable by the
+  // same string, so the assertions above are about the kind, not a dead id.
+  assert.equal((await (await del(env, 'x1', 'pair')).json()).deleted, 2);
+  assert.deepEqual(await get(env), []);
+});
+
+test('deleting the pair whose pair_id is another half id leaves that half', async () => {
+  const env = await overlapping(newEnv());
+
+  const res = await del(env, 'x1', 'pair');
+  assert.equal((await res.json()).deleted, 2, 'both halves of the pair, no more');
+
+  const feed = await get(env);
+  assert.equal(feed.length, 1);
+  assert.equal(feed[0].pairId, null, 'the unrelated single survives');
+  assert.equal(feed[0].monkey.text, 'an unrelated single');
+});
+
+test('kind=pair given a half row id deletes nothing', async () => {
+  const env = newEnv();
+  await post(env, at('2026-01-01', '09:00', {
+    pairId: 'p1', monkey: monkey(), turtle: turtle(),
+  }));
+
+  assert.equal((await (await del(env, 'm1', 'pair')).json()).deleted, 0);
+  assert.equal(rawRows(env).length, 2, 'nothing was touched');
+
+  // Positive control: that same id does delete as a half.
+  assert.equal((await (await del(env, 'm1', 'half')).json()).deleted, 1);
+});
+
+test('kind=half given a pair_id deletes nothing', async () => {
+  const env = newEnv();
+  await post(env, at('2026-01-01', '09:00', {
+    pairId: 'p1', monkey: monkey(), turtle: turtle(),
+  }));
+
+  assert.equal((await (await del(env, 'p1', 'half')).json()).deleted, 0);
+  assert.equal(rawRows(env).length, 2, 'nothing was touched');
+
+  assert.equal((await (await del(env, 'p1', 'pair')).json()).deleted, 2);
+});
+
+test('a delete with no kind, or an unknown one, is refused', async () => {
+  const env = newEnv();
+  await post(env, at('2026-01-01', '09:00', {
+    pairId: 'p1', monkey: monkey(), turtle: turtle(),
+  }));
+
+  // 'constructor' is in the list because a bare object lookup would answer it.
+  for (const kind of [undefined, '', 'both', 'moment', 'PAIR', 'constructor', '__proto__']) {
+    const res = await del(env, 'p1', kind);
+    assert.equal(res.status, 400, `kind=${kind} must be refused`);
+    assert.equal((await res.json()).error, 'Invalid request');
+  }
+
+  assert.equal(rawRows(env).length, 2, 'a refused delete touches nothing');
+
+  // Positive control: the same request with a kind does delete.
+  assert.equal((await (await del(env, 'p1', 'pair')).json()).deleted, 2);
 });
