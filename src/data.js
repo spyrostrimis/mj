@@ -160,6 +160,62 @@ export function buildMoment(monkey, turtle, now = new Date()) {
   };
 }
 
+// A moment is identified by the pair it belongs to, or, unpaired, by its lone
+// half's own row id. Both are compared because the two id spaces overlap: a
+// lone half may carry the same id as an unrelated pair's pairId.
+const isSameMoment = (a, b) => a.pairId === b.pairId && a.id === b.id;
+
+// Removes one half from the entries list.
+//
+// halfId is the row's PRIMARY KEY, so the match is exact where a moment id
+// would be ambiguous. The other half surviving keeps the moment with that side
+// null; the last half takes the moment with it.
+export function removeHalf(entries, who, halfId) {
+  const other = who === 'monkey' ? 'turtle' : 'monkey';
+  const out = [];
+
+  for (const e of entries) {
+    if (e[who]?.id !== halfId) { out.push(e); continue; }
+    if (e[other]) out.push({ ...e, [who]: null });
+    // else: that was the last half, so the moment goes with it
+  }
+
+  return out;
+}
+
+// Puts one half back after its delete failed - and only that half.
+//
+// The other side is deliberately never taken from `moment`. If the moment is
+// still in the list, what it holds now is the truth. If it is gone, it has no
+// halves left, which means the other side was either already absent or deleted
+// while this request was in flight - so restoring the whole snapshot would
+// resurrect a half the server really did delete. That also makes the snapshot
+// safe to be one render stale.
+export function restoreHalf(entries, index, moment, who) {
+  const other = who === 'monkey' ? 'turtle' : 'monkey';
+  const found = entries.findIndex((e) => isSameMoment(e, moment));
+
+  if (found !== -1) {
+    const next = [...entries];
+    next[found] = { ...next[found], [who]: moment[who] };
+    return next;
+  }
+
+  const at = Math.min(Math.max(index, 0), entries.length);
+  return [
+    ...entries.slice(0, at),
+    { ...moment, [other]: null, [who]: moment[who] },
+    ...entries.slice(at),
+  ];
+}
+
+// The line to show when a delete fails. Unlike loadFailure this never moves
+// the gate: the journal on screen is fine, one request was not.
+export function deleteFailure(err) {
+  if (err?.status === 401) return 'Your session expired. Reload to sign in again.';
+  return 'That could not be deleted. Please try again.';
+}
+
 export function computeStats(entries) {
   const blank = () => Object.fromEntries(LANGS.map(l => [l.key, 0]));
   const monkey = blank();
