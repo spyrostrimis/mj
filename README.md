@@ -20,7 +20,7 @@ Live at **https://mj.spyrostrimis.com**
 ```
 .
 ├── wrangler.toml            Cloudflare config + D1 binding
-├── schema.sql               Database schema
+├── migrations/              D1 migrations - the schema, versioned
 ├── functions/               Pages Functions (the API)
 │   ├── _session.js            Password check + signed session cookie
 │   └── api/
@@ -41,6 +41,7 @@ Live at **https://mj.spyrostrimis.com**
 │   ├── icons.jsx              UI icons
 │   ├── data.js                Dates, love languages, stats
 │   └── api.js                 Fetch wrappers
+├── test/                    node:test suites (npm test)
 └── public/                  Served as-is by Pages
     ├── index.html
     ├── css/styles.css
@@ -74,12 +75,22 @@ Do this before the first deploy. `wrangler.toml` is what declares the `DB`
 binding, so a build that ships the placeholder id deploys without a working
 database.
 
-Create the table in both places:
+Create the table in both places. Locally:
 
 ```bash
-npm run db:local      # your machine
-npm run db:remote     # Cloudflare
+npm run db:migrate
 ```
+
+Then on Cloudflare:
+
+```bash
+npx wrangler d1 export mj-journal --remote --output=..\mj-backups\first-setup.sql
+npx wrangler d1 migrations apply mj-journal --remote
+```
+
+The remote apply is deliberately not an npm script. It rewrites the live
+database, so it should be typed out on purpose, and never without the export
+above. See [Changing the schema](#changing-the-schema).
 
 ### 3. Set the password locally
 
@@ -97,6 +108,17 @@ PowerShell writes UTF-16, which wrangler may not read.
 ```bash
 npm run dev           # http://localhost:8788
 ```
+
+### 5. Run the tests
+
+```bash
+npm test
+```
+
+Node's built-in runner (`node:test`) - there is no test framework dependency.
+Handler tests import the Pages Functions directly and run them against a
+`Request`; database tests apply the real `migrations/` files to an in-memory
+SQLite database via `node:sqlite`.
 
 ---
 
@@ -174,6 +196,38 @@ git add -A
 git commit -m "Add something"
 git push
 ```
+
+## Changing the schema
+
+Schema changes go through migrations only - never by editing a table by hand,
+and never by editing a migration that has already been applied.
+
+```bash
+npx wrangler d1 migrations create mj-journal describe-the-change
+```
+
+Edit the generated file in `migrations/`, then apply it locally and check the
+app still works:
+
+```bash
+npm run db:migrate
+npm run db:status     # should list nothing outstanding
+npm test
+npm run dev
+```
+
+Only once that is green, go to production. Back up first - this is the step
+that cannot be undone:
+
+```bash
+npx wrangler d1 export mj-journal --remote --output=..\mj-backups\2026-01-01-reason.sql
+npx wrangler d1 migrations apply mj-journal --remote
+git push
+```
+
+Push immediately after applying. Between the two the live site is running old
+code against a new schema and may error; for a two-person journal that gap is
+acceptable, but do not leave it open.
 
 ## Changing the password
 

@@ -8,8 +8,8 @@
     "build": "esbuild src/main.jsx --bundle --minify --format=iife --target=es2020 --jsx=automatic --outfile=public/assets/app.js",
     "dev": "npm run build && wrangler pages dev",
     "test": "node --test \"test/**/*.test.js\"",
-    "db:local": "wrangler d1 execute mj-journal --local --file=schema.sql",
-    "db:remote": "wrangler d1 execute mj-journal --remote --file=schema.sql"
+    "db:migrate": "wrangler d1 migrations apply mj-journal --local",
+    "db:status": "wrangler d1 migrations list mj-journal --local"
   },
   "dependencies": {
     "react": "^18.3.1",

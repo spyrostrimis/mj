@@ -36,7 +36,8 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
 
 ```
 wrangler.toml              Pages config + D1 binding (database_id committed; not a secret)
-schema.sql                 Current table definition (being replaced by migrations/, see state)
+migrations/
+  0001_moments_per_half.sql  One row per half; pair_id links the two halves of a pair
 functions/
   _session.js              Password check + signed session cookie
   api/_middleware.js       Guards every /api/* route except /api/auth
@@ -56,6 +57,10 @@ src/
   icons.jsx                UI icons
   data.js                  Dates, love languages (LANGS), stats
   api.js                   Fetch wrappers
+test/
+  session.test.js          Password + signed-cookie helpers
+  migration.test.js        Applies migrations/ and asserts the schema defends itself
+  helpers/migrate.js       Applies migrations/ to a fresh in-memory node:sqlite DB
 public/
   index.html               Shell; loads /css/styles.css and /assets/app.js
   css/styles.css
@@ -68,14 +73,14 @@ Vocabulary: **Monkey** = the boyfriend, **Turtle** = the owner/writer. The love 
 
 **Current (live):** a single table `moments` with one PAIRED row per save. `monkey_text`, `monkey_lang`, `turtle_text`, and `turtle_lang` are all `NOT NULL`, so both halves are required. This is a known defect and is being replaced. See "Decided target" below.
 
-**Decided target (first feature, not yet implemented):**
+**Decided target** - schema in `migrations/0001_moments_per_half.sql`, applied locally, NOT yet remote:
 
-- One row per half, with `subject` ∈ {`monkey`, `turtle`}.
+- One row per half, with `subject` ∈ {`monkey`, `turtle`}. The text column is `body`.
 - Saving both halves at once creates two rows sharing a `pair_id`. The two rows are written atomically and displayed together as a pair.
 - Saving one half creates one row with no pair.
 - Save is enabled when at least one half is complete (text + love language). If the other half is partially filled, Save is blocked and the UI shows which half is incomplete. The server enforces the same rule: every submitted half must be complete.
 
-Exact column names, the API payload shape, and how the frontend groups pairs are to be proposed in a plan and approved before any edits.
+The API payload shape and how the frontend groups pairs are approved and being implemented. Production still runs the paired-row table above until the remote migration is applied.
 
 ## RUN / TEST
 
@@ -84,9 +89,13 @@ All commands run in PowerShell from the repo root, `D:\Documents\homepage\mj.spy
 - `npm install`
 - `npm run build` bundles the frontend.
 - `npm run dev` builds, then runs `wrangler pages dev` at http://localhost:8788 against LOCAL D1.
-- `npm run db:local` / `npm run db:remote` apply `schema.sql`. These are to be replaced by migration scripts.
+- `npm run db:migrate` applies `migrations/` to LOCAL D1; `npm run db:status` lists what is outstanding. Both are `--local`. There is deliberately no remote script: applying to production is typed out in full, after a backup.
 - Local password: `.dev.vars` containing `APP_PASSWORD=...`. Create it with `"APP_PASSWORD=..." | Out-File .dev.vars -Encoding ascii`. Plain `echo >` in Windows PowerShell writes UTF-16, which wrangler may not read.
-- Tests: none committed yet. The first feature adds a `node:test` suite and an `npm test` script.
+- `npm test` runs `node --test "test/**/*.test.js"`. Node's built-in runner; no test framework dependency.
+- Tests come in two tiers:
+  - **No database.** Pages Functions are imported directly and called with a `Request` and a fake `env`. They run unmodified under plain Node - `Response.json` and `crypto.subtle` are globals.
+  - **Database.** The real `migrations/` files are applied to an in-memory SQLite database via `node:sqlite` (built in; a Node release candidate, test-only, never shipped to Cloudflare).
+- Why not real D1: both `getPlatformProxy()` and direct Miniflare hang in Claude's execution environment - a long-lived in-process `workerd` never becomes ready. `npm run dev` and `wrangler d1 execute --local` are unaffected and work normally. Schema semantics were cross-checked once against real local D1 (columns, indexes, every CHECK) and matched.
 
 ## DEPLOYMENT
 
