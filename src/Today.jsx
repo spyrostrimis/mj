@@ -64,16 +64,31 @@ function EntryHalf({ who, half, accent }) {
   );
 }
 
+// A moment is a pair or a lone half. Only the halves that exist are drawn,
+// and the hairline between them only when there are two.
 export function EntryBlock({ entry, accent }) {
+  const present = [['monkey', entry.monkey], ['turtle', entry.turtle]]
+    .filter(([, half]) => half);
+
+  const parts = [];
+  present.forEach(([who, half], i) => {
+    if (i > 0) {
+      parts.push(
+        <div key={'rule-' + who} style={{
+          height: 1, background: 'rgba(26,26,26,0.06)', margin: '2px 0 2px 22px',
+        }}/>
+      );
+    }
+    parts.push(<EntryHalf key={who} who={who} half={half} accent={accent}/>);
+  });
+
   return (
     <div style={{ padding: '18px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{
         fontSize: 11, color: '#9a958d', letterSpacing: 1.2,
         textTransform: 'uppercase', fontVariantNumeric: 'tabular-nums', fontWeight: 500,
       }}>{entry.time}</div>
-      <EntryHalf who="monkey" half={entry.monkey} accent={accent}/>
-      <div style={{ height: 1, background: 'rgba(26,26,26,0.06)', margin: '2px 0 2px 22px' }}/>
-      <EntryHalf who="turtle" half={entry.turtle} accent={accent}/>
+      {parts}
     </div>
   );
 }

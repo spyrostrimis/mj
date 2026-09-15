@@ -55,9 +55,9 @@ function BarRow({ label, value, total, accent }) {
   );
 }
 
-function PairedBarRow({ label, monkeyN, turtleN, total, accent }) {
-  const mPct = total > 0 ? Math.round((monkeyN / total) * 100) : 0;
-  const tPct = total > 0 ? Math.round((turtleN / total) * 100) : 0;
+function PairedBarRow({ label, monkeyN, turtleN, monkeyTotal, turtleTotal, accent }) {
+  const mPct = monkeyTotal > 0 ? Math.round((monkeyN / monkeyTotal) * 100) : 0;
+  const tPct = turtleTotal > 0 ? Math.round((turtleN / turtleTotal) * 100) : 0;
   const track = { flex: 1, height: 3, background: 'rgba(26,26,26,0.06)', borderRadius: 2, overflow: 'hidden' };
   return (
     <div>
@@ -93,7 +93,8 @@ function PairedBarRow({ label, monkeyN, turtleN, total, accent }) {
 export function InsightsScreen({ entries, accent }) {
   const [view, setView] = useState('both');
   const stats = computeStats(entries);
-  const total = entries.length;
+  const total = stats.momentCount;
+  const halves = stats.monkeyTotal + stats.turtleTotal;
   const mTop  = topLang(stats.monkey);
   const tTop  = topLang(stats.turtle);
 
@@ -126,7 +127,7 @@ export function InsightsScreen({ entries, accent }) {
 
       <ScreenScroll>
         <div style={{ padding: '20px 24px 110px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {total === 0 ? (
+          {halves === 0 ? (
             <div style={{
               paddingTop: 16,
               fontFamily: "'Instrument Serif', Georgia, serif",
@@ -135,21 +136,22 @@ export function InsightsScreen({ entries, accent }) {
           ) : (
             sorted.map(l => {
               if (view === 'him') {
-                return <BarRow key={l.key} label={l.label} value={stats.monkey[l.key]} total={total} accent={accent}/>;
+                return <BarRow key={l.key} label={l.label} value={stats.monkey[l.key]} total={stats.monkeyTotal} accent={accent}/>;
               }
               if (view === 'me') {
-                return <BarRow key={l.key} label={l.label} value={stats.turtle[l.key]} total={total} accent={accent}/>;
+                return <BarRow key={l.key} label={l.label} value={stats.turtle[l.key]} total={stats.turtleTotal} accent={accent}/>;
               }
               return (
                 <PairedBarRow
                   key={l.key} label={l.label}
                   monkeyN={stats.monkey[l.key]} turtleN={stats.turtle[l.key]}
-                  total={total} accent={accent}/>
+                  monkeyTotal={stats.monkeyTotal} turtleTotal={stats.turtleTotal}
+                  accent={accent}/>
               );
             })
           )}
 
-          {total > 0 && (
+          {(mTop || tTop) && (
             <div style={{ marginTop: 12, paddingTop: 22, borderTop: '1px solid rgba(26,26,26,0.08)' }}>
               <div className="eyebrow">Pattern</div>
               <div style={{
@@ -157,13 +159,20 @@ export function InsightsScreen({ entries, accent }) {
                 fontSize: 22, lineHeight: 1.25, letterSpacing: -0.3,
                 color: '#1a1a1a', marginTop: 8,
               }}>
-                Monkey leans into <span style={{ color: accent }}>{LANG_BY_KEY[mTop]?.label}</span>.<br/>
-                You return it in <span style={{ color: accent }}>{LANG_BY_KEY[tTop]?.label}</span>.
+                {/* Each line only appears once that side has something logged,
+                    so the journal never claims a lean it has not seen. */}
+                {mTop && (
+                  <>Monkey leans into <span style={{ color: accent }}>{LANG_BY_KEY[mTop].label}</span>.</>
+                )}
+                {mTop && tTop && <br/>}
+                {tTop && (
+                  <>You return it in <span style={{ color: accent }}>{LANG_BY_KEY[tTop].label}</span>.</>
+                )}
               </div>
             </div>
           )}
 
-          {view === 'both' && total > 0 && (
+          {view === 'both' && halves > 0 && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 14,
               fontSize: 11.5, color: '#9a958d', marginTop: 4,

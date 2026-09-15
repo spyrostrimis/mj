@@ -91,19 +91,104 @@ export function groupByDate(entries) {
   return Array.from(map.entries()).map(([date, es]) => ({ date, entries: es }));
 }
 
+// A half is 'empty' (untouched), 'complete' (text + love language), or
+// 'partial' (one without the other). Only a partial half blocks Save.
+export function halfStatus(half) {
+  const text = (half?.text || '').trim();
+  const lang = half?.lang || '';
+  if (!text && !lang) return 'empty';
+  if (text && lang) return 'complete';
+  return 'partial';
+}
+
+// Save needs at least one complete half and no half-filled one. A half the
+// writer never touched is not an omission, so it never blocks.
+export function composerState(monkey, turtle) {
+  const m = halfStatus(monkey);
+  const t = halfStatus(turtle);
+
+  const incomplete = [];
+  if (m === 'partial') incomplete.push('monkey');
+  if (t === 'partial') incomplete.push('turtle');
+
+  return {
+    monkey: m,
+    turtle: t,
+    incomplete,
+    canSave: (m === 'complete' || t === 'complete') && incomplete.length === 0,
+  };
+}
+
+// What a partial half is missing. Empty string when nothing is wrong.
+export function halfHint(half) {
+  const text = (half?.text || '').trim();
+  const lang = half?.lang || '';
+  if (text && !lang) return 'Pick a love language.';
+  if (!text && lang) return 'Add a few words.';
+  return '';
+}
+
+export function newId(prefix = '') {
+  return prefix + crypto.randomUUID();
+}
+
+// Builds the object the composer saves: the optimistic feed item AND the POST
+// body, which are deliberately the same shape. Returns null when the sheet is
+// not in a saveable state. Lives here, not in Sheet.jsx, so the wire format is
+// testable against the API without a DOM.
+export function buildMoment(monkey, turtle, now = new Date()) {
+  const state = composerState(monkey, turtle);
+  if (!state.canSave) return null;
+
+  const monkeyHalf = state.monkey === 'complete'
+    ? { id: newId('m-'), text: monkey.text.trim(), lang: monkey.lang }
+    : null;
+  const turtleHalf = state.turtle === 'complete'
+    ? { id: newId('t-'), text: turtle.text.trim(), lang: turtle.lang }
+    : null;
+
+  // Two halves saved together are a pair; one on its own has no pair.
+  const pairId = monkeyHalf && turtleHalf ? newId('p-') : null;
+
+  return {
+    id: pairId || (monkeyHalf ? monkeyHalf.id : turtleHalf.id),
+    pairId,
+    date: localDateISO(now),
+    time: localTime(now),
+    monkey: monkeyHalf,
+    turtle: turtleHalf,
+  };
+}
+
 export function computeStats(entries) {
   const blank = () => Object.fromEntries(LANGS.map(l => [l.key, 0]));
   const monkey = blank();
   const turtle = blank();
+
+  // Halves are independent now, so each subject is counted against its own
+  // halves. Using the moment count would let a lone Turtle half shrink every
+  // Monkey bar.
+  let monkeyTotal = 0;
+  let turtleTotal = 0;
+
   for (const e of entries) {
-    if (monkey[e.monkey?.lang] !== undefined) monkey[e.monkey.lang]++;
-    if (turtle[e.turtle?.lang] !== undefined) turtle[e.turtle.lang]++;
+    if (e.monkey && monkey[e.monkey.lang] !== undefined) {
+      monkey[e.monkey.lang]++;
+      monkeyTotal++;
+    }
+    if (e.turtle && turtle[e.turtle.lang] !== undefined) {
+      turtle[e.turtle.lang]++;
+      turtleTotal++;
+    }
   }
-  return { monkey, turtle, total: entries.length };
+
+  return { monkey, turtle, monkeyTotal, turtleTotal, momentCount: entries.length };
 }
 
+// Returns null when this subject has nothing logged - seeding at -1 used to
+// hand back the first language and claim a lean that was never recorded.
 export function topLang(counts) {
-  let best = null, bestN = -1;
+  let best = null, bestN = 0;
   for (const [k, n] of Object.entries(counts)) {
     if (n > bestN) { bestN = n; best = k; }
   }
