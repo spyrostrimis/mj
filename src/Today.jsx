@@ -68,11 +68,19 @@ function EntryHalf({ who, half, accent, onTap }) {
 
   if (!onTap) return body;
 
+  // Safari does not focus a button on click, so the sheet would have nothing to
+  // hand focus back to on Cancel. Taking it explicitly makes that deterministic;
+  // preventScroll because the phone frame is a clip, not a scroller.
+  const tap = (e) => {
+    e.currentTarget.focus({ preventScroll: true });
+    onTap();
+  };
+
   return (
     <button
       type="button"
       className="half-btn"
-      onClick={onTap}
+      onClick={tap}
       aria-haspopup="dialog"
       aria-label={who === 'monkey' ? "Monkey's half, actions" : 'My half, actions'}>
       {body}

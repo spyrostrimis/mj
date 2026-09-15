@@ -52,6 +52,17 @@ html, body {
 .icon-btn:hover:not(:disabled) { background: rgba(26, 26, 26, 0.05); }
 .icon-btn:disabled { cursor: default; }
 
+/* The phone frame clips; it is not a scroller. `overflow: hidden` still
+   scrolls programmatically, and the composer sits parked below the fold at
+   translateY(100%) - so a focus-into-view or an assistive-tech call could
+   scroll it up over the screen. `overflow: clip` creates no scroll container
+   at all, so there is nothing to scroll. The `hidden` before it is the
+   fallback for browsers that do not know `clip`. */
+.frame-clip {
+  overflow: hidden;
+  overflow: clip;
+}
+
 /* A half is tappable: it opens that half's actions. Styled to be invisible -
    the feed must still read as prose - with only a press state added. The
    negative margin keeps the padding from shifting the layout. */

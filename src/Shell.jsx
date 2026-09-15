@@ -61,6 +61,16 @@ function BottomTabs({ active, onChange, accent }) {
   );
 }
 
+// The frame clips; it is not a scroller. overflow:hidden still scrolls
+// programmatically, and both sheets park below the fold at translateY(100%) -
+// so a focus-into-view, an errant anchor or an assistive-tech call can scroll
+// the closed composer into view over the screen. Snapping back makes the clip
+// mean what it says.
+const clipOnly = (e) => {
+  if (e.currentTarget.scrollTop !== 0) e.currentTarget.scrollTop = 0;
+  if (e.currentTarget.scrollLeft !== 0) e.currentTarget.scrollLeft = 0;
+};
+
 function useViewport() {
   const [vp, setVp] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
   useEffect(() => {
@@ -84,14 +94,17 @@ function PhoneFrame({ children }) {
         display: 'flex', flexDirection: 'column',
       }}>
         <div style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}/>
-        <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+        <div className="frame-clip" onScroll={clipOnly} style={{ position: 'relative', flex: 1 }}>
           {children}
         </div>
       </div>
     );
   }
 
-  const scale = Math.min((w - 48) / APP_W, (h - 48) / APP_H, 1);
+  // Clamped above zero: a viewport shorter than the 48px margin made this
+  // negative, and a negative scale renders the whole app inverted rather than
+  // small. A cramped window should crop the frame, never flip it.
+  const scale = Math.max(Math.min((w - 48) / APP_W, (h - 48) / APP_H, 1), 0.2);
 
   return (
     <div style={{
@@ -106,9 +119,9 @@ function PhoneFrame({ children }) {
           boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 60px 120px -40px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.4)',
           padding: 10,
         }}>
-          <div style={{
+          <div className="frame-clip" onScroll={clipOnly} style={{
             width: '100%', height: '100%',
-            borderRadius: 48, overflow: 'hidden',
+            borderRadius: 48,
             background: '#fafaf7', position: 'relative',
           }}>
             <div style={{

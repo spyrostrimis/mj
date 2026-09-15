@@ -35,13 +35,7 @@ function ActionRow({ label, note, color, innerRef, onClick }) {
 
 export function HalfSheet({ target, accent, onCancel, onDelete }) {
   const open = !!target;
-
-  // The sheet outlives its target by one transition so it can animate out.
-  // Holding the last target in a ref keeps that frame painted without an extra
-  // render, and re-rendering with the same value is harmless.
-  const shown = useRef(null);
-  if (target) shown.current = target;
-  const t = target || shown.current;
+  const t = target;
 
   const [entered, setEntered] = useState(false);
   const cancelRef = useRef(null);
@@ -61,12 +55,28 @@ export function HalfSheet({ target, accent, onCancel, onDelete }) {
 
   // Cancel takes focus, never Delete. A destructive action does not get to be
   // the thing a stray Enter reaches.
-  useEffect(() => { if (entered) cancelRef.current?.focus(); }, [entered]);
+  //
+  // preventScroll matters more than it looks: the phone frame clips with
+  // overflow:hidden, which is still programmatically scrollable, and the
+  // composer sits permanently parked below the fold. Focusing anything the
+  // browser considers off-screen - this panel mid-transition, for one - makes
+  // it scroll the frame to reach it, dragging the composer into view.
+  const takeFocus = (el) => el?.focus?.({ preventScroll: true });
+
+  useEffect(() => { if (entered) takeFocus(cancelRef.current); }, [entered]);
+
+  const releaseFocus = () => {
+    const el = returnTo.current;
+    returnTo.current = null;
+    // Back to the half that opened this, when it is still there. Otherwise let
+    // focus fall to the document rather than ride the sheet off-screen.
+    if (el && document.contains(el)) takeFocus(el);
+    else document.activeElement?.blur?.();
+  };
 
   const close = () => {
-    const el = returnTo.current;
     onCancel();
-    if (el && document.contains(el)) el.focus();
+    releaseFocus();
   };
 
   // Delete fires once. A double-tap lands inside the same frame, before the
@@ -74,6 +84,10 @@ export function HalfSheet({ target, accent, onCancel, onDelete }) {
   const fire = () => {
     if (fired.current) return;
     fired.current = true;
+    // The half this returns to is about to be deleted, so this usually lands
+    // on the document - which is the point. Leaving focus on the Delete button
+    // parked it below the frame and let the browser scroll there.
+    releaseFocus();
     onDelete();
   };
 
