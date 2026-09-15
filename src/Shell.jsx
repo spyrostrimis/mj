@@ -221,7 +221,7 @@ export function App() {
     try {
       // A 200 with deleted: 0 means it was already gone - the goal state
       // either way, so there is nothing to undo and nothing to say.
-      await api.deleteEntry(half.id);
+      await api.deleteEntry(half.id, 'half');
     } catch (err) {
       setEntries(prev => restoreHalf(prev, index, moment, who));
       setError(deleteFailure(err));

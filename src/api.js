@@ -46,11 +46,24 @@ export const saveEntry = (entry) =>
     body: JSON.stringify(entry),
   });
 
+const DELETE_KINDS = new Set(['pair', 'half']);
+
 // kind names which id space the id is in: 'pair' for a moment's pairId, which
 // takes both halves, or 'half' for a row's own id, which takes exactly that
 // one. An unpaired moment is its half, so it goes as 'half'.
-export const deleteEntry = (id, kind) =>
-  request(
+//
+// A caller that omits it used to send ?kind=undefined, which the server
+// refused with a 400 that the feed reported as "could not be deleted" - a
+// wiring mistake wearing a server error's clothes. Throwing here names the
+// real fault instead.
+export const deleteEntry = (id, kind) => {
+  if (!DELETE_KINDS.has(kind)) {
+    throw new Error(
+      `deleteEntry: kind must be 'pair' or 'half', got ${JSON.stringify(kind)}`
+    );
+  }
+  return request(
     `/api/entries/${encodeURIComponent(id)}?kind=${encodeURIComponent(kind)}`,
     { method: 'DELETE' }
   );
+};
