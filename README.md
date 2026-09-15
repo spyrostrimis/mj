@@ -70,6 +70,10 @@ npx wrangler d1 create mj-journal
 That prints a `database_id`. Paste it into `wrangler.toml`, replacing
 `REPLACE_WITH_YOUR_DATABASE_ID`, then commit the change.
 
+Do this before the first deploy. `wrangler.toml` is what declares the `DB`
+binding, so a build that ships the placeholder id deploys without a working
+database.
+
 Create the table in both places:
 
 ```bash
@@ -79,9 +83,12 @@ npm run db:remote     # Cloudflare
 
 ### 3. Set the password locally
 
-```bash
-echo APP_PASSWORD=pick-something-long > .dev.vars
+```powershell
+"APP_PASSWORD=pick-something-long" | Out-File .dev.vars -Encoding ascii
 ```
+
+Use `Out-File -Encoding ascii`, not `echo >`. Plain redirection in Windows
+PowerShell writes UTF-16, which wrangler may not read.
 
 `.dev.vars` is gitignored and never leaves your machine.
 
@@ -103,6 +110,9 @@ git branch -M main
 git push -u origin main
 ```
 
+`wrangler.toml` must already carry the real `database_id` from setup step 2 —
+connecting Pages below triggers a build straight away.
+
 ### 2. Connect Cloudflare Pages
 
 In the Cloudflare dashboard: **Workers & Pages → Create → Pages →
@@ -116,14 +126,19 @@ Connect to Git**, pick `spyrostrimis/mj`, then set:
 
 Save and deploy. The first build takes about a minute.
 
-### 3. Bind the database
+### 3. Check the database binding
 
-**Settings → Bindings → Add → D1 database**
+The `DB` binding is declared in `wrangler.toml`, so Pages picks it up from
+the repo — there is nothing to add by hand. Open **Settings → Bindings** and
+confirm it is listed:
 
 | Field | Value |
 | --- | --- |
 | Variable name | `DB` |
 | D1 database | `mj-journal` |
+
+The dashboard shows bindings read-only. If one is wrong, fix `wrangler.toml`
+and push; never edit it in the dashboard.
 
 ### 4. Set the password
 
@@ -134,11 +149,11 @@ Save and deploy. The first build takes about a minute.
 | Name | `APP_PASSWORD` |
 | Value | your passphrase |
 
-Add it to **Production** and **Preview**. Use a real passphrase — it is the
-only thing standing between the open internet and your journal.
+Add it to **Production** only — there are no preview deployments; every push
+to `main` goes live. Use a real passphrase, it is the only thing standing
+between the open internet and your journal.
 
-Redeploy after adding the binding and the secret, so the running build picks
-them up.
+Redeploy after adding the secret, so the running build picks it up.
 
 ### 5. Point the subdomain at it
 
