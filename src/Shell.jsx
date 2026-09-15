@@ -8,6 +8,8 @@ import { InsightsScreen } from './Insights.jsx';
 import { CalendarScreen } from './Calendar.jsx';
 import { QuickSheet } from './Sheet.jsx';
 import { LockScreen } from './Lock.jsx';
+import { UnavailableScreen } from './Unavailable.jsx';
+import { loadFailure } from './data.js';
 import * as api from './api.js';
 
 const ACCENT   = '#8a6e4e';
@@ -152,9 +154,12 @@ function Centered({ children }) {
 }
 
 export function App() {
-  // null = still checking, false = locked, true = unlocked
-  const [unlocked, setUnlocked] = useState(null);
+  // 'checking' | 'locked' | 'open' | 'unavailable'
+  const [gate, setGate]         = useState('checking');
   const [entries, setEntries]   = useState([]);
+  // Why the journal could not be loaded. Only read by the unavailable screen.
+  const [gateMessage, setGateMessage] = useState('');
+  // Transient trouble with the journal already on screen - a failed save.
   const [loadError, setError]   = useState('');
   const [tab, setTab]           = useState('today');
   const [calendar, setCalendar] = useState(false);
@@ -164,11 +169,14 @@ export function App() {
     try {
       setEntries(await api.loadEntries());
       setError('');
-      setUnlocked(true);
+      setGateMessage('');
+      setGate('open');
     } catch (err) {
-      if (err.status === 401) { setUnlocked(false); return; }
-      setError(err.message || 'Could not reach the journal.');
-      setUnlocked(true);
+      // A failed load never falls through to the feed: an empty journal and
+      // a broken server must not look the same.
+      const { gate: next, message } = loadFailure(err);
+      setGateMessage(message);
+      setGate(next);
     }
   };
 
@@ -190,14 +198,22 @@ export function App() {
     }
   };
 
-  if (unlocked === null) {
+  if (gate === 'checking') {
     return <PhoneFrame><Centered>{'Opening…'}</Centered></PhoneFrame>;
   }
 
-  if (unlocked === false) {
+  if (gate === 'locked') {
     return (
       <PhoneFrame>
         <LockScreen accent={ACCENT} onUnlock={fetchEntries}/>
+      </PhoneFrame>
+    );
+  }
+
+  if (gate === 'unavailable') {
+    return (
+      <PhoneFrame>
+        <UnavailableScreen accent={ACCENT} message={gateMessage} onRetry={fetchEntries}/>
       </PhoneFrame>
     );
   }

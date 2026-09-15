@@ -194,3 +194,27 @@ export function topLang(counts) {
   }
   return best;
 }
+
+// Where the shell should go when loading the journal fails. A 401 is the
+// ordinary locked state. Anything else - a missing APP_PASSWORD (503), a
+// database error, a dead connection - means there is no journal to show, and
+// rendering the feed would pass a broken server off as a quiet day.
+export function loadFailure(err) {
+  if (err?.status === 401) return { gate: 'locked', message: '' };
+
+  // No status means fetch itself failed. Its message ("Failed to fetch") is
+  // browser noise, so it is replaced rather than shown.
+  if (!err?.status) {
+    return {
+      gate: 'unavailable',
+      message: 'Could not reach the journal. Check your connection and try again.',
+    };
+  }
+
+  // The server's own line is the useful one: the 503 says the secret is
+  // missing, which is exactly what the reader needs to know.
+  return {
+    gate: 'unavailable',
+    message: err.message || `The journal could not be loaded (${err.status}).`,
+  };
+}
