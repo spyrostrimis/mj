@@ -60,7 +60,13 @@ src/
 test/
   session.test.js          Password + signed-cookie helpers
   migration.test.js        Applies migrations/ and asserts the schema defends itself
+  entries-validation.test.js  POST rules, with a DB that throws if touched
+  entries-db.test.js       What gets stored, what GET returns, pair atomicity, DELETE
+  contract.test.js         The composer's own payload, fed to the real POST handler
+  composer.test.js         Save gate: halfStatus / composerState / halfHint / newId
+  stats.test.js            Per-subject totals and topLang
   helpers/migrate.js       Applies migrations/ to a fresh in-memory node:sqlite DB
+  helpers/d1.js            D1Database-shaped wrapper over node:sqlite
 public/
   index.html               Shell; loads /css/styles.css and /assets/app.js
   css/styles.css
@@ -71,16 +77,16 @@ Vocabulary: **Monkey** = the boyfriend, **Turtle** = the owner/writer. The love 
 
 ## DATA MODEL
 
-**Current (live):** a single table `moments` with one PAIRED row per save. `monkey_text`, `monkey_lang`, `turtle_text`, and `turtle_lang` are all `NOT NULL`, so both halves are required. This is a known defect and is being replaced. See "Decided target" below.
-
-**Decided target** - schema in `migrations/0001_moments_per_half.sql`, applied locally, NOT yet remote:
+**Current (live):** a single table `moments` with one row per HALF, created by `migrations/0001_moments_per_half.sql` and applied to production on 2026-09-15.
 
 - One row per half, with `subject` ∈ {`monkey`, `turtle`}. The text column is `body`.
 - Saving both halves at once creates two rows sharing a `pair_id`. The two rows are written atomically and displayed together as a pair.
 - Saving one half creates one row with no pair.
 - Save is enabled when at least one half is complete (text + love language). If the other half is partially filled, Save is blocked and the UI shows which half is incomplete. The server enforces the same rule: every submitted half must be complete.
 
-The API payload shape and how the frontend groups pairs are approved and being implemented. Production still runs the paired-row table above until the remote migration is applied.
+Columns: `id`, `pair_id` (nullable - this is the single/pair switch), `subject`, `lang`, `body`, `entry_date`, `entry_time`, `created_at`. CHECK constraints enforce the subject, the five languages, a non-blank body of at most 2000 characters, and the date/time formats. A unique index on (`pair_id`, `subject`) allows at most one half per subject per pair; NULLs are distinct in a SQLite unique index, so unpaired rows are unconstrained by it.
+
+`GET /api/entries` groups rows into one item per moment - `{ id, pairId, date, time, monkey, turtle }` with `null` for a missing half - and `POST` takes that same shape back. A pair is written with `batch()`, which D1 runs as a transaction; D1 does not accept explicit BEGIN/COMMIT.
 
 ## RUN / TEST
 
@@ -95,7 +101,7 @@ All commands run in PowerShell from the repo root, `D:\Documents\homepage\mj.spy
 - Tests come in two tiers:
   - **No database.** Pages Functions are imported directly and called with a `Request` and a fake `env`. They run unmodified under plain Node - `Response.json` and `crypto.subtle` are globals.
   - **Database.** The real `migrations/` files are applied to an in-memory SQLite database via `node:sqlite` (built in; a Node release candidate, test-only, never shipped to Cloudflare).
-- Why not real D1: both `getPlatformProxy()` and direct Miniflare hang in Claude's execution environment - a long-lived in-process `workerd` never becomes ready. `npm run dev` and `wrangler d1 execute --local` are unaffected and work normally. Schema semantics were cross-checked once against real local D1 (columns, indexes, every CHECK) and matched.
+- Why not real D1 in tests: `getPlatformProxy()` and direct Miniflare both hang in Claude's execution environment - a long-lived IN-PROCESS `workerd` never becomes ready. The wrangler CLI is unaffected: `npm run dev` (`wrangler pages dev`) serves and hot-reloads normally there, and so does `wrangler d1 execute --local`, so browser verification against local D1 is available. Schema semantics were cross-checked against local D1 (columns, indexes, every CHECK) and matched; `batch()` rollback was confirmed end-to-end through `pages dev`. Production D1's rollback is covered only by Cloudflare's docs.
 
 ## DEPLOYMENT
 
@@ -140,7 +146,7 @@ These are known, not bugs to fix on sight. Work from the specific instruction gi
 
 - `TODAY` is read from the browser clock once per page load. A tab left open past midnight still shows yesterday.
 - Saving is optimistic: the moment appears immediately and is rolled back with a message if the write fails.
-- `DELETE /api/entries/:id` exists but has no UI button.
+- `DELETE /api/entries/:id` takes a moment's id as the feed sees it: a pair's `pair_id`, or a lone half's own id. Given a pair id it removes BOTH halves, so a pair is never left as an orphaned single. It still has no UI button, so removing anything from the live journal means a `--remote` command.
 - The app shell is public. Only `/api/*` data is locked.
 
 ## SCOPE
