@@ -2,13 +2,17 @@
 
 PROJECT: Monkey Journal, a private love-language journal for two people: Turtle (the owner) and Monkey (his boyfriend). Turtle is the only intended writer. Both read it. Each item records something Monkey did for Turtle, or something Turtle did for Monkey, tagged with one of five love languages. Live at https://mj.spyrostrimis.com on Cloudflare Pages + D1. Purely personal project. This file is auto-read at session start. Treat everything below as standing rules for this repo.
 
-<!-- ┌─ SYNC v1 · HARD RULES · mirrored in CLAUDE.md + project instructions -->
+<!-- ┌─ SYNC v2 · HARD RULES · mirrored in CLAUDE.md + project instructions -->
 <!-- │  Edit one → edit the other → bump BOTH version numbers. -->
 
 ## HARD RULES
 
 - App UI language = English only.
 - One shared password, no roles. Anyone with the password can read AND write. This is a deliberate decision. Do not propose accounts, roles, or a reader/writer split unless asked.
+  - **The password gate is currently OFF** (commit `58d3263`, 2026-09-16) for the build phase. `AUTH_DISABLED = "1"` in `wrangler.toml` `[vars]` lets every `/api/*` request through without a session. The lock screen, login route, session code and their tests stay in place.
+  - While the gate is off, production holds obviously-fake test data only. Anything there is readable, writable and deletable by anyone who finds the hostname.
+  - The gate goes back on BEFORE the first real entry: delete the `[vars]` block, push, and confirm that `/api/entries` with no cookie returns 401.
+  - Turning the gate on or off is always its own commit, never part of another change.
 - Journal content is private.
   - Never read, print, query, or export LIVE data unless explicitly asked in the current session.
   - Real entries never appear in commits, test fixtures, screenshots, or logs.
@@ -18,10 +22,11 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
 - Schema changes go ONLY through D1 migrations in `migrations/`. Never edit a migration that has already been applied. Never drop or rebuild a table holding real entries without a migration that preserves them.
 - Running cost must stay $0. Cloudflare free tier only. Any proposal requiring a paid plan gets flagged for a decision, never implemented silently.
 - Secrets: never committed, never a literal in source. `APP_PASSWORD` lives in the Cloudflare dashboard (Production) and, locally, in the gitignored `.dev.vars`. Never stage `.dev.vars`, `.env`, `node_modules/`, `public/assets/` (build output), `.wrangler/`, `*.zip`, or any backup/export file.
-- `main` is the only branch, and pushing to it PUBLISHES to mj.spyrostrimis.com. No feature branches, no preview deployments. Every push is a live deploy.
-- `wrangler.toml` is the source of truth for Pages configuration and bindings. The dashboard shows them read-only. Change bindings in the file, never in the dashboard. (Verified against Cloudflare's Pages docs.)
+- `main` is the only branch that is ever pushed, and pushing to it PUBLISHES to mj.spyrostrimis.com. No pushed feature branches, no preview deployments. Every push is a live deploy.
+  - Claude Code worktree branches are local scratch space only. They are never pushed, are merged into `main` locally, and are removed once `main` contains them.
+- `wrangler.toml` is the source of truth for Pages configuration, bindings and plain (non-secret) vars. The dashboard shows them read-only. Change them in the file, never in the dashboard. (Verified against Cloudflare's Pages docs.)
 
-<!-- └─ /SYNC v1 · HARD RULES -->
+<!-- └─ /SYNC v2 · HARD RULES -->
 
 ## STACK
 
@@ -29,33 +34,48 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
 - API: Cloudflare Pages Functions in `functions/`. File path = route.
 - Data: Cloudflare D1 (serverless SQLite), database `mj-journal`, binding `DB`.
 - Auth: a shared password compared by HMAC digest. On success, the server sets a session cookie holding an expiry plus an HMAC signature, keyed by the password itself. The cookie is `HttpOnly; Secure; SameSite=Strict` and lasts 30 days. Changing `APP_PASSWORD` signs everyone out.
+  - **Currently bypassed:** the middleware skips the check when `env.AUTH_DISABLED === '1'`, and only that exact string counts (fail-closed). The shell never asks whether a session exists; it only turns a 401 into the lock screen, so the bypass needed no frontend change.
 - Tooling: wrangler 3.x (devDependency), Node's built-in test runner (`node:test`) for tests, and jsdom (devDependency) for the tests that render React. There is still no test framework - no Jest, no Vitest, no @testing-library - and `act` comes from React itself (`React.act`), not from the deprecated copy in `react-dom/test-utils`. Do not add a test framework without asking.
-- Fonts: Instrument Serif and Instrument Sans, self-hosted in `public/fonts/` (decided). Greek falls back to EB Garamond (serif) and Inter (sans), greek subset only, gated by `unicode-range`. The app makes no third-party request at runtime. `@font-face` rules are at the top of `public/css/styles.css`; provenance and refresh steps are in `public/fonts/README.md`.
+- Fonts: Instrument Serif and Instrument Sans, self-hosted in `public/fonts/` (decided). Greek falls back to EB Garamond (serif) and Inter (sans), greek subset only, gated by `unicode-range`.
+  - The app makes no third-party request at runtime.
+  - `@font-face` rules are at the top of `public/css/styles.css`; provenance and refresh steps are in `public/fonts/README.md`.
+  - The serif stack is also written inline in several `src/` components. A change to the stack has to be made in each of them.
 
 ## FILE MAP
 
 ```
+.gitattributes             * text=auto eol=lf (LF everywhere; overrides core.autocrlf)
+.gitignore                 node_modules/, public/assets/, .wrangler/, .dev.vars, .env, .DS_Store
+CLAUDE.md                  Standing rules for this repo (auto-read at session start)
+README.md                  Setup and deploy notes
+package.json               Scripts: build, dev, test, db:migrate, db:status
+package-lock.json
 wrangler.toml              Pages config + D1 binding (database_id committed; not a secret)
+                           + [vars] AUTH_DISABLED = "1" while the gate is off
 migrations/
   0001_moments_per_half.sql  One row per half; pair_id links the two halves of a pair
 functions/
   _session.js              Password check + signed session cookie
   api/_middleware.js       Guards every /api/* route except /api/auth
+                           (bypassed while AUTH_DISABLED === '1')
   api/auth.js              POST login · GET check · DELETE logout
   api/entries.js           GET list · POST create
-  api/entries/[id].js      DELETE one
+  api/entries/[id].js      DELETE one pair or one half (?kind=pair|half required)
 src/
   main.jsx                 Entry point
   Shell.jsx                Phone frame (<720px full-bleed, wider = scaled iOS frame), tabs, auth + entries state
   Lock.jsx                 Password gate
+  Unavailable.jsx          Error screen for 503 / 500 / network load failures
   Today.jsx                Newest-first feed; opens Calendar
   Calendar.jsx             Monthly grid
   Insights.jsx             Hairline bars, Him / Me / Both segmented control
-  Sheet.jsx                Bottom-sheet composer (Monkey half + Turtle half)
+  Sheet.jsx                Bottom-sheet composer, exported as QuickSheet
+                           (Monkey half + Turtle half)
+  HalfSheet.jsx            Half-actions sheet: the tapped half as context, Delete, Cancel
   layout.jsx               Shared screen primitives
   mascots.jsx              Monkey + Turtle marks
   icons.jsx                UI icons
-  data.js                  Dates, love languages (LANGS), stats
+  data.js                  Dates, love languages (LANGS), stats, loadFailure()
   api.js                   Fetch wrappers
 test/
   session.test.js          Password + signed-cookie helpers
@@ -70,14 +90,16 @@ test/
   api-client.test.js       deleteEntry refuses to guess an id space; URL shape
   half-sheet-dom.test.js   The half-actions sheet rendered in jsdom: focus, Escape,
                            Tab trap, double-tap latch, composer stays parked
+  auth-disabled.test.js    Middleware bypass: open only for the exact string '1'
   helpers/migrate.js       Applies migrations/ to a fresh in-memory node:sqlite DB
   helpers/d1.js            D1Database-shaped wrapper over node:sqlite
   helpers/dom.js           jsdom document + React root, fetch stub, act helpers
   helpers/jsx-loader.mjs   esbuild load hook so node --test can import .jsx
   helpers/register-jsx.mjs Installs that hook (used via node --import)
 public/
-  index.html               Shell; loads /css/styles.css and /assets/app.js
-  css/styles.css
+  index.html               Shell; loads /css/styles.css and /assets/app.js (no external links)
+  css/styles.css           @font-face rules at the top
+  fonts/                   Self-hosted woff2 files, OFL license texts, README (provenance)
   assets/app.js            BUILD OUTPUT, gitignored
 ```
 
@@ -85,7 +107,7 @@ Vocabulary: **Monkey** = the boyfriend, **Turtle** = the owner/writer. The love 
 
 ## DATA MODEL
 
-**Current (live):** a single table `moments` with one row per HALF, created by `migrations/0001_moments_per_half.sql` and applied to production on 2026-09-15.
+**Current (live):** a single table `moments` with one row per HALF, created by `migrations/0001_moments_per_half.sql` and applied to production on 2026-09-15. Production currently holds test data only (see HARD RULES).
 
 - One row per half, with `subject` ∈ {`monkey`, `turtle`}. The text column is `body`.
 - Saving both halves at once creates two rows sharing a `pair_id`. The two rows are written atomically and displayed together as a pair.
@@ -105,14 +127,31 @@ All commands run in PowerShell from the repo root, `D:\Documents\homepage\mj.spy
 - `npm run dev` builds, then runs `wrangler pages dev` at http://localhost:8788 against LOCAL D1.
 - `npm run db:migrate` applies `migrations/` to LOCAL D1; `npm run db:status` lists what is outstanding. Both are `--local`. There is deliberately no remote script: applying to production is typed out in full, after a backup.
 - Local password: `.dev.vars` containing `APP_PASSWORD=...`. Create it with `"APP_PASSWORD=..." | Out-File .dev.vars -Encoding ascii`. Plain `echo >` in Windows PowerShell writes UTF-16, which wrangler may not read.
+- Local gate: `wrangler.toml` `[vars]` applies to `pages dev` too, so local dev is currently open. To exercise the lock screen locally, add `AUTH_DISABLED=0` to `.dev.vars`. Cloudflare's docs say `.dev.vars` overrides `[vars]`; confirm this on this wrangler 3.x before relying on it.
 - `npm test` runs `node --import ./test/helpers/register-jsx.mjs --test "test/**/*.test.js"`. Node's built-in runner; the `--import` installs the JSX load hook and must come before `--test`.
 - Tests come in three tiers:
   - **No database.** Pages Functions are imported directly and called with a `Request` and a fake `env`. They run unmodified under plain Node - `Response.json` and `crypto.subtle` are globals.
   - **Database.** The real `migrations/` files are applied to an in-memory SQLite database via `node:sqlite` (built in; a Node release candidate, test-only, never shipped to Cloudflare).
-  - **DOM.** The real components are rendered into jsdom. `node --test` cannot import `.jsx`, so `test/helpers/register-jsx.mjs` installs an esbuild load hook with the same transform settings as `npm run build` - which is why the test script runs `node --import ./test/helpers/register-jsx.mjs --test`. Two things about this tier are load-bearing: jsdom is constructed with `pretendToBeVisual: true`, because it is the only way to get `requestAnimationFrame`, and the sheets' `entered` state is gated on a double rAF - without it every sheet stays at `translateY(100%)` and open-state assertions silently test a closed sheet. And jsdom does no layout, so `getBoundingClientRect`, `offsetHeight` and `scrollHeight` are all zero: assert DOM state, focus and inline styles, never geometry. Geometry has to be checked in a real browser.
+  - **DOM.** The real components are rendered into jsdom. `node --test` cannot import `.jsx`, so `test/helpers/register-jsx.mjs` installs an esbuild load hook with the same transform settings as `npm run build`.
+    - jsdom is constructed with `pretendToBeVisual: true`, because it is the only way to get `requestAnimationFrame`. The sheets' `entered` state is gated on a double rAF; without it every sheet stays at `translateY(100%)` and open-state assertions silently test a closed sheet.
+    - jsdom does no layout, so `getBoundingClientRect`, `offsetHeight` and `scrollHeight` are all zero. Assert DOM state, focus and inline styles, never geometry. Geometry has to be checked in a real browser.
+    - Compare DOM nodes with `assert.ok(a === b, msg)`, never `assert.equal`. On failure, `assert.equal` builds a diff that walks the jsdom tree until the heap dies.
 
-  Why this tier exists: a delete button shipped twice with 89 tests green, because nothing rendered React. Anything about focus, overlay stacking or sheet state belongs here.
-- Why not real D1 in tests: `getPlatformProxy()` and direct Miniflare both hang in Claude's execution environment - a long-lived IN-PROCESS `workerd` never becomes ready. The wrangler CLI is unaffected: `npm run dev` (`wrangler pages dev`) serves and hot-reloads normally there, and so does `wrangler d1 execute --local`, so browser verification against local D1 is available. Schema semantics were cross-checked against local D1 (columns, indexes, every CHECK) and matched; `batch()` rollback was confirmed end-to-end through `pages dev`. Production D1's rollback is covered only by Cloudflare's docs.
+  Why the DOM tier exists: a delete button shipped twice with 89 tests green, because nothing rendered React. Anything about focus, overlay stacking or sheet state belongs here.
+- Why not real D1 in tests: `getPlatformProxy()` and direct Miniflare both hang in Claude's execution environment - a long-lived IN-PROCESS `workerd` never becomes ready.
+  - The wrangler CLI is unaffected: `npm run dev` (`wrangler pages dev`) serves and hot-reloads normally there, and so does `wrangler d1 execute --local`, so browser verification against local D1 is available.
+  - Schema semantics were cross-checked against local D1 (columns, indexes, every CHECK) and matched. `batch()` rollback was confirmed end-to-end through `pages dev`.
+  - Production D1's rollback is covered only by Cloudflare's docs.
+
+## ENVIRONMENT
+
+- Windows PowerShell blocks `npm.ps1` under the default execution policy. Use `npm.cmd`, or `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` in a non-admin window.
+- **Browser pane compositing (this cost two shipped bugs).** When the Claude Code desktop window is minimised or behind another window, the built-in browser pane does not composite.
+  - `requestAnimationFrame` never fires, screenshots time out, and `window.innerWidth/innerHeight` report 0.
+  - rAF-gated state never advances, so sheets and modals never really open. Driving their buttons by DOM ref still "works", so verification reports success while the UI is broken.
+  - **Rule:** before claiming a UI change verified in `pages dev`, probe the pane with a double-rAF promise with a timeout, plus `innerWidth`. If rAF does not fire, say that verification is DOM-level only and ask Turtle to look.
+  - `resize_window` fixes a 0×0 viewport but does NOT restore compositing.
+  - Treat an odd-looking screenshot as a finding, never as a rendering glitch.
 
 ## DEPLOYMENT
 
@@ -124,14 +163,15 @@ All commands run in PowerShell from the repo root, `D:\Documents\homepage\mj.spy
 - Pages hostname: `https://mj-4er.pages.dev`
 - Production URL: `https://mj.spyrostrimis.com` (custom domain; DNS on Cloudflare)
 - D1: `mj-journal`, binding `DB`, declared in `wrangler.toml`
+- Plain vars: `[vars]` in `wrangler.toml` (currently only `AUTH_DISABLED`). Pages applies them to production; this was verified on 2026-09-16.
 - Secret: `APP_PASSWORD`, set in the dashboard under Settings → Variables and Secrets. Adding or changing it needs a redeploy (Deployments → ⋯ → Retry deployment).
 - Git integration is active: every push to `main` builds and deploys.
 - Deploying a schema change: back up, apply the remote migration, then push immediately. The site may error briefly between the two steps, which is acceptable for this app.
 
 ## GIT
 
-- `main` only. One commit per change.
-- `core.autocrlf` is on for this machine. Watch for line-ending churn.
+- `main` only (see HARD RULES for worktree branches). One commit per change.
+- Line endings: `.gitattributes` sets `* text=auto eol=lf`, which takes precedence over this machine's `core.autocrlf`. A diff that shows CRLF churn means something bypassed it: stop and flag it rather than committing.
 - The first commit was authored as `Spyros Trimis <trickywisdom@gmail.com>`.
 
 <!-- ┌─ SYNC v1 · CHANGE DISCIPLINE · mirrored in CLAUDE.md + project instructions -->
@@ -155,10 +195,17 @@ All commands run in PowerShell from the repo root, `D:\Documents\homepage\mj.spy
 
 These are known, not bugs to fix on sight. Work from the specific instruction given.
 
+- **The password gate is off** (see HARD RULES). The app opens straight to the feed, and `/api/auth` still reports `authenticated: false` but is never asked.
 - `TODAY` is read from the browser clock once per page load. A tab left open past midnight still shows yesterday.
 - Saving is optimistic: the moment appears immediately and is rolled back with a message if the write fails.
-- `DELETE /api/entries/:id?kind=pair|half` requires the kind, because a `pair_id` and a row id are different id spaces that may hold the same string. `kind=pair` removes every row of that pair, so a pair is never left as an orphaned single; `kind=half` removes exactly that one row by primary key, and an unpaired moment is deleted as its half. A missing or unknown kind is a 400. Tapping a half in the feed opens a half-actions sheet whose Delete sends `kind=half`; that is the only kind the UI sends, so deleting a whole pair in one action is still a `--remote` command.
-- The app shell is public. Only `/api/*` data is locked.
+- `DELETE /api/entries/:id?kind=pair|half` requires the kind, because a `pair_id` and a row id are different id spaces that may hold the same string. A missing or unknown kind is a 400.
+  - `kind=pair` removes every row of that pair, so a pair is never left as an orphaned single.
+  - `kind=half` removes exactly that one row by primary key; an unpaired moment is deleted as its half.
+  - Tapping a half in the feed opens a half-actions sheet whose Delete sends `kind=half`. That is the only kind the UI sends, so deleting a whole pair in one action is still a `--remote` command.
+- Delete is permanent: no undo, no soft delete.
+- No Edit: no PUT/PATCH endpoint and no edit UI.
+- Sheet entry (composer and half-actions sheet) is gated on a double rAF. If rAF is throttled, a sheet stays invisible.
+- The app shell is public. Only `/api/*` data is locked (and currently not even that).
 
 ## SCOPE
 
