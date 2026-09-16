@@ -37,7 +37,7 @@ export function UnavailableScreen({ accent, message, onRetry }) {
       </div>
 
       <h1 style={{
-        fontFamily: "'Instrument Serif', Georgia, serif",
+        fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
         fontSize: 26, fontWeight: 400, letterSpacing: -0.4,
         margin: 0, color: '#1a1a1a', textAlign: 'center',
       }}>The journal is unavailable</h1>

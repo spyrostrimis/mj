@@ -44,7 +44,7 @@ export function LockScreen({ accent, onUnlock }) {
       </div>
 
       <h1 style={{
-        fontFamily: "'Instrument Serif', Georgia, serif",
+        fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
         fontSize: 30, fontWeight: 400, letterSpacing: -0.5,
         margin: 0, color: '#1a1a1a', textAlign: 'center',
       }}>Monkey Journal</h1>
@@ -69,7 +69,7 @@ export function LockScreen({ accent, onUnlock }) {
             borderBottom: '1px solid ' + (error ? '#b85c3e' : 'rgba(26,26,26,0.16)'),
             outline: 'none', background: 'transparent',
             padding: '8px 2px',
-            fontFamily: "'Instrument Serif', Georgia, serif",
+            fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
             fontSize: 18, fontStyle: 'italic', color: '#1a1a1a',
             letterSpacing: 0.4, textAlign: 'center',
             transition: 'border-color .15s ease',

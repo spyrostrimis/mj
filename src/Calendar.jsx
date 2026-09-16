@@ -113,7 +113,7 @@ export function CalendarScreen({ entries, onBack, onHalfTap, accent }) {
           <ChevronLeft size={20} color="#5a554c"/>
         </button>
         <div style={{
-          fontFamily: "'Instrument Serif', Georgia, serif",
+          fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
           fontSize: 22, letterSpacing: -0.3, color: '#1a1a1a',
           whiteSpace: 'nowrap', flexShrink: 0,
         }}>{MONTHS_LONG[view.m] + ' ' + view.y}</div>
@@ -158,7 +158,7 @@ export function CalendarScreen({ entries, onBack, onHalfTap, accent }) {
           {selDay.length === 0 ? (
             <div style={{
               paddingTop: 24,
-              fontFamily: "'Instrument Serif', Georgia, serif",
+              fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
               fontSize: 17, color: '#b8b3aa', fontStyle: 'italic', lineHeight: 1.4,
             }}>Nothing logged on this day.</div>
           ) : (

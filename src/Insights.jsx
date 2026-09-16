@@ -130,7 +130,7 @@ export function InsightsScreen({ entries, accent }) {
           {halves === 0 ? (
             <div style={{
               paddingTop: 16,
-              fontFamily: "'Instrument Serif', Georgia, serif",
+              fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
               fontSize: 17, color: '#b8b3aa', fontStyle: 'italic', lineHeight: 1.4,
             }}>No moments logged yet.<br/>Start with Today.</div>
           ) : (
@@ -155,7 +155,7 @@ export function InsightsScreen({ entries, accent }) {
             <div style={{ marginTop: 12, paddingTop: 22, borderTop: '1px solid rgba(26,26,26,0.08)' }}>
               <div className="eyebrow">Pattern</div>
               <div style={{
-                fontFamily: "'Instrument Serif', Georgia, serif",
+                fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
                 fontSize: 22, lineHeight: 1.25, letterSpacing: -0.3,
                 color: '#1a1a1a', marginTop: 8,
               }}>

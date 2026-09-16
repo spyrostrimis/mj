@@ -59,7 +59,7 @@ function EntryHalf({ who, half, accent, onTap }) {
         <LangChip langKey={half.lang} accent={accent}/>
       </div>
       <div style={{
-        fontFamily: "'Instrument Serif', Georgia, serif",
+        fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
         fontSize: 17, lineHeight: 1.45, color: '#1a1a1a',
         fontStyle: 'italic', letterSpacing: 0.1,
       }}>{half.text}</div>
@@ -143,7 +143,7 @@ function TodayEmpty({ accent }) {
   return (
     <div style={{
       padding: '24px 0 18px',
-      fontFamily: "'Instrument Serif', Georgia, serif",
+      fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
       fontSize: 19, lineHeight: 1.4, color: '#9a958d', fontStyle: 'italic',
     }}>
       Nothing yet today.<br/>

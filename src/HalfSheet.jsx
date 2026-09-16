@@ -213,7 +213,7 @@ export function HalfSheet({ target, accent, onCancel, onDelete }) {
               <LangChip langKey={t.half.lang} accent={accent}/>
             </div>
             <div style={{
-              fontFamily: "'Instrument Serif', Georgia, serif",
+              fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
               fontSize: 17, lineHeight: 1.45, color: '#1a1a1a',
               fontStyle: 'italic', letterSpacing: 0.1,
             }}>{t.half.text}</div>

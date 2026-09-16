@@ -30,7 +30,7 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
 - Data: Cloudflare D1 (serverless SQLite), database `mj-journal`, binding `DB`.
 - Auth: a shared password compared by HMAC digest. On success, the server sets a session cookie holding an expiry plus an HMAC signature, keyed by the password itself. The cookie is `HttpOnly; Secure; SameSite=Strict` and lasts 30 days. Changing `APP_PASSWORD` signs everyone out.
 - Tooling: wrangler 3.x (devDependency), Node's built-in test runner (`node:test`) for tests, and jsdom (devDependency) for the tests that render React. There is still no test framework - no Jest, no Vitest, no @testing-library - and `act` comes from React itself (`React.act`), not from the deprecated copy in `react-dom/test-utils`. Do not add a test framework without asking.
-- Fonts: Instrument Serif and Instrument Sans from Google Fonts. This is the only third-party request at runtime, and whether to self-host is an OPEN decision. Do not change it unasked.
+- Fonts: Instrument Serif and Instrument Sans, self-hosted in `public/fonts/` (decided). Greek falls back to EB Garamond (serif) and Inter (sans), greek subset only, gated by `unicode-range`. The app makes no third-party request at runtime. `@font-face` rules are at the top of `public/css/styles.css`; provenance and refresh steps are in `public/fonts/README.md`.
 
 ## FILE MAP
 

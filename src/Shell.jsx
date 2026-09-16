@@ -161,7 +161,7 @@ function Centered({ children }) {
       position: 'absolute', inset: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: '#fafaf7', padding: '0 36px', textAlign: 'center',
-      fontFamily: "'Instrument Serif', Georgia, serif",
+      fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
       fontSize: 17, color: '#9a958d', fontStyle: 'italic', lineHeight: 1.5,
     }}>{children}</div>
   );

@@ -28,7 +28,7 @@ function GrowTextarea({ value, onChange, placeholder, autoFocus }) {
       style={{
         width: '100%', border: 'none', outline: 'none', resize: 'none',
         background: 'transparent', padding: 0, margin: 0,
-        fontFamily: "'Instrument Serif', Georgia, serif",
+        fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
         fontSize: 17, lineHeight: 1.45, color: '#1a1a1a',
         fontStyle: 'italic', letterSpacing: 0.1,
         minHeight: 24, overflow: 'auto',
