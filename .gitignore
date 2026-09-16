@@ -18,3 +18,10 @@ public/assets/
 *.zip
 *.sql
 !migrations/*.sql
+
+# Claude Code local state. launch.json is shared on purpose and is tracked;
+# these two are not. worktrees/ holds whole repo checkouts - a stale one there
+# is what made a repo-wide grep report files that main does not contain -
+# and settings.local.json is per-machine permission state.
+.claude/worktrees/
+.claude/settings.local.json

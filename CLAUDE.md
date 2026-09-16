@@ -44,9 +44,13 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
 ## FILE MAP
 
 ```
+.claude/
+  launch.json              Preview dev-server config: npm run dev on port 8788
+                           (worktrees/ and settings.local.json are gitignored)
 .gitattributes             * text=auto eol=lf (LF everywhere; overrides core.autocrlf)
 .gitignore                 node_modules/, public/assets/, .wrangler/, .dev.vars, .env,
-                           .DS_Store, *.zip, *.sql (migrations/*.sql re-included)
+                           .DS_Store, *.zip, *.sql (migrations/*.sql re-included),
+                           .claude/worktrees/, .claude/settings.local.json
 CLAUDE.md                  Standing rules for this repo (auto-read at session start)
 README.md                  Setup and deploy notes
 package.json               Scripts: build, dev, test, db:migrate, db:status
