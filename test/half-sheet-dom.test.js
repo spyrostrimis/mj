@@ -60,6 +60,7 @@ async function mount() {
     // in source casing: the uppercase look is a CSS textTransform, which jsdom
     // does not apply to textContent.
     composer: () => all('div').find((d) => d.textContent.includes('New moment') && d.style.transform),
+    panel: () => all('div').find((d) => d.style.transform && d.textContent.includes('Delete')),
     clip: () => q('.frame-clip'),
     active: () => dom.window.document.activeElement,
     async done() {
@@ -136,6 +137,8 @@ test('the sheet never takes focus without preventScroll', async () => {
 
   try {
     await click(ui.half('monkey half of a pair'));
+    await pressKey('Tab');                       // the trap focuses too
+    await pressKey('Tab', { shiftKey: true });
     await click(ui.sheetButton('Cancel'));
     await click(ui.half('lone monkey half'));
     await click(ui.sheetButton('Delete'));
@@ -269,6 +272,34 @@ test('Delete fires once when it is double-tapped', async () => {
     await settle();
 
     assert.equal(ui.deletes().length, 1, 'one DELETE, not two');
+  } finally { await ui.done(); }
+});
+
+test('the sheet slides out before it leaves the DOM, inert while it does', async () => {
+  const ui = await mount();
+  try {
+    await click(ui.half('monkey half of a pair'));
+    assert.ok(ui.dialog(), 'open to begin with');
+
+    await click(ui.sheetButton('Cancel'));
+
+    // Still painted so it can animate - but decoration only. Parking a live,
+    // focusable sheet below the fold is what broke the app the first time.
+    const panel = ui.panel();
+    assert.ok(panel, 'the panel stays mounted for the slide-out');
+    assert.equal(ui.dialog(), null, 'and stops being a dialog immediately');
+    assert.equal(panel.getAttribute('aria-hidden'), 'true');
+    assert.equal(panel.style.pointerEvents, 'none');
+    assert.match(panel.style.transform, /translateY\(100%\)/, 'sliding down');
+    assert.deepEqual(
+      [...panel.querySelectorAll('button')].map((b) => b.getAttribute('tabindex')),
+      ['-1', '-1'],
+      'with its rows out of the tab order on the way'
+    );
+
+    // And then it actually goes. The bug was parking it forever.
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    assert.equal(ui.panel(), undefined, 'gone once the slide is done');
   } finally { await ui.done(); }
 });
 

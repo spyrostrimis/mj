@@ -10,11 +10,12 @@ import { LangChip } from './Today.jsx';
 
 const DANGER = '#a33a2b';   // brick, warm enough for the cream palette
 
-function ActionRow({ label, note, color, innerRef, onClick }) {
+function ActionRow({ label, note, color, innerRef, tabIndex, onClick }) {
   return (
     <button
       ref={innerRef}
       type="button"
+      tabIndex={tabIndex}
       onClick={onClick}
       style={{
         width: '100%', padding: '13px 16px',
@@ -33,15 +34,26 @@ function ActionRow({ label, note, color, innerRef, onClick }) {
   );
 }
 
+// Long enough to cover the .28s slide, short enough that nothing lingers.
+const EXIT_MS = 320;
+
 export function HalfSheet({ target, accent, onCancel, onDelete }) {
   const open = !!target;
-  const t = target;
+
+  // Closing keeps the sheet mounted just long enough to slide out. For that
+  // moment it is decoration only - not a dialog, aria-hidden, no pointer
+  // events, out of the tab order - which is the difference between animating
+  // out and the old behaviour of parking it below the fold indefinitely, where
+  // it stayed focusable and added scrollable overflow to the frame.
+  const [closing, setClosing] = useState(null);
+  const t = target || closing;
 
   const [entered, setEntered] = useState(false);
   const cancelRef = useRef(null);
   const deleteRef = useRef(null);
   const fired     = useRef(false);
   const returnTo  = useRef(null);
+  const lastOpen  = useRef(null);
 
   useEffect(() => {
     if (!open) { setEntered(false); return; }
@@ -52,6 +64,23 @@ export function HalfSheet({ target, accent, onCancel, onDelete }) {
     );
     return () => cancelAnimationFrame(id);
   }, [open]);
+
+  useEffect(() => {
+    if (target) {
+      lastOpen.current = target;
+      setClosing(null);
+      return;
+    }
+    if (!lastOpen.current) return;
+
+    setClosing(lastOpen.current);
+    lastOpen.current = null;
+    // A timer rather than transitionend: a transition that never runs - a
+    // hidden tab, a browser that skips it - would otherwise leave the sheet
+    // mounted for good.
+    const id = setTimeout(() => setClosing(null), EXIT_MS);
+    return () => clearTimeout(id);
+  }, [target]);
 
   // Cancel takes focus, never Delete. A destructive action does not get to be
   // the thing a stray Enter reaches.
@@ -102,10 +131,9 @@ export function HalfSheet({ target, accent, onCancel, onDelete }) {
       if (!first || !last) return;
       e.preventDefault();
       const active = document.activeElement;
-      (e.shiftKey
+      takeFocus(e.shiftKey
         ? (active === first ? last : first)
-        : (active === last ? first : last)
-      ).focus();
+        : (active === last ? first : last));
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -134,10 +162,12 @@ export function HalfSheet({ target, accent, onCancel, onDelete }) {
         }}/>
 
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="half-sheet-title"
+        role={open ? 'dialog' : undefined}
+        aria-modal={open ? 'true' : undefined}
+        aria-hidden={open ? undefined : 'true'}
+        aria-labelledby={open ? 'half-sheet-title' : undefined}
         style={{
+          pointerEvents: open ? 'auto' : 'none',
           position: 'absolute', left: 0, right: 0, bottom: 0,
           maxHeight: '88%',
           background: '#fafaf7',
@@ -187,10 +217,12 @@ export function HalfSheet({ target, accent, onCancel, onDelete }) {
             <ActionRow
               innerRef={deleteRef}
               label="Delete" note={note} color={DANGER}
+              tabIndex={open ? 0 : -1}
               onClick={fire}/>
             <ActionRow
               innerRef={cancelRef}
               label="Cancel" color="#5a554c"
+              tabIndex={open ? 0 : -1}
               onClick={close}/>
           </div>
         </div>
