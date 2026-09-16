@@ -11,3 +11,10 @@ public/assets/
 .env
 
 .DS_Store
+
+# Backups and exports. These live outside the repo by rule, but a stray one
+# written inside it must not be stageable. The negation keeps migrations
+# tracked - they are real source, not an export.
+*.zip
+*.sql
+!migrations/*.sql

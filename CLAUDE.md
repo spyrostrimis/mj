@@ -45,7 +45,8 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
 
 ```
 .gitattributes             * text=auto eol=lf (LF everywhere; overrides core.autocrlf)
-.gitignore                 node_modules/, public/assets/, .wrangler/, .dev.vars, .env, .DS_Store
+.gitignore                 node_modules/, public/assets/, .wrangler/, .dev.vars, .env,
+                           .DS_Store, *.zip, *.sql (migrations/*.sql re-included)
 CLAUDE.md                  Standing rules for this repo (auto-read at session start)
 README.md                  Setup and deploy notes
 package.json               Scripts: build, dev, test, db:migrate, db:status
