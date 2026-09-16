@@ -29,7 +29,7 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
 - API: Cloudflare Pages Functions in `functions/`. File path = route.
 - Data: Cloudflare D1 (serverless SQLite), database `mj-journal`, binding `DB`.
 - Auth: a shared password compared by HMAC digest. On success, the server sets a session cookie holding an expiry plus an HMAC signature, keyed by the password itself. The cookie is `HttpOnly; Secure; SameSite=Strict` and lasts 30 days. Changing `APP_PASSWORD` signs everyone out.
-- Tooling: wrangler 3.x (devDependency), Node's built-in test runner (`node:test`) for tests. Do not add a test framework dependency without asking.
+- Tooling: wrangler 3.x (devDependency), Node's built-in test runner (`node:test`) for tests, and jsdom (devDependency) for the tests that render React. There is still no test framework - no Jest, no Vitest, no @testing-library - and `act` comes from React itself (`React.act`), not from the deprecated copy in `react-dom/test-utils`. Do not add a test framework without asking.
 - Fonts: Instrument Serif and Instrument Sans from Google Fonts. This is the only third-party request at runtime, and whether to self-host is an OPEN decision. Do not change it unasked.
 
 ## FILE MAP
@@ -62,11 +62,19 @@ test/
   migration.test.js        Applies migrations/ and asserts the schema defends itself
   entries-validation.test.js  POST rules, with a DB that throws if touched
   entries-db.test.js       What gets stored, what GET returns, pair atomicity, DELETE
-  contract.test.js         The composer's own payload, fed to the real POST handler
+  contract.test.js         Composer payload -> real POST; delete wrapper -> real DELETE
   composer.test.js         Save gate: halfStatus / composerState / halfHint / newId
   stats.test.js            Per-subject totals and topLang
+  shell-gate.test.js       Where a failed load sends the shell (loadFailure)
+  half-delete.test.js      removeHalf / restoreHalf / deleteFailure
+  api-client.test.js       deleteEntry refuses to guess an id space; URL shape
+  half-sheet-dom.test.js   The half-actions sheet rendered in jsdom: focus, Escape,
+                           Tab trap, double-tap latch, composer stays parked
   helpers/migrate.js       Applies migrations/ to a fresh in-memory node:sqlite DB
   helpers/d1.js            D1Database-shaped wrapper over node:sqlite
+  helpers/dom.js           jsdom document + React root, fetch stub, act helpers
+  helpers/jsx-loader.mjs   esbuild load hook so node --test can import .jsx
+  helpers/register-jsx.mjs Installs that hook (used via node --import)
 public/
   index.html               Shell; loads /css/styles.css and /assets/app.js
   css/styles.css
@@ -97,10 +105,13 @@ All commands run in PowerShell from the repo root, `D:\Documents\homepage\mj.spy
 - `npm run dev` builds, then runs `wrangler pages dev` at http://localhost:8788 against LOCAL D1.
 - `npm run db:migrate` applies `migrations/` to LOCAL D1; `npm run db:status` lists what is outstanding. Both are `--local`. There is deliberately no remote script: applying to production is typed out in full, after a backup.
 - Local password: `.dev.vars` containing `APP_PASSWORD=...`. Create it with `"APP_PASSWORD=..." | Out-File .dev.vars -Encoding ascii`. Plain `echo >` in Windows PowerShell writes UTF-16, which wrangler may not read.
-- `npm test` runs `node --test "test/**/*.test.js"`. Node's built-in runner; no test framework dependency.
-- Tests come in two tiers:
+- `npm test` runs `node --import ./test/helpers/register-jsx.mjs --test "test/**/*.test.js"`. Node's built-in runner; the `--import` installs the JSX load hook and must come before `--test`.
+- Tests come in three tiers:
   - **No database.** Pages Functions are imported directly and called with a `Request` and a fake `env`. They run unmodified under plain Node - `Response.json` and `crypto.subtle` are globals.
   - **Database.** The real `migrations/` files are applied to an in-memory SQLite database via `node:sqlite` (built in; a Node release candidate, test-only, never shipped to Cloudflare).
+  - **DOM.** The real components are rendered into jsdom. `node --test` cannot import `.jsx`, so `test/helpers/register-jsx.mjs` installs an esbuild load hook with the same transform settings as `npm run build` - which is why the test script runs `node --import ./test/helpers/register-jsx.mjs --test`. Two things about this tier are load-bearing: jsdom is constructed with `pretendToBeVisual: true`, because it is the only way to get `requestAnimationFrame`, and the sheets' `entered` state is gated on a double rAF - without it every sheet stays at `translateY(100%)` and open-state assertions silently test a closed sheet. And jsdom does no layout, so `getBoundingClientRect`, `offsetHeight` and `scrollHeight` are all zero: assert DOM state, focus and inline styles, never geometry. Geometry has to be checked in a real browser.
+
+  Why this tier exists: a delete button shipped twice with 89 tests green, because nothing rendered React. Anything about focus, overlay stacking or sheet state belongs here.
 - Why not real D1 in tests: `getPlatformProxy()` and direct Miniflare both hang in Claude's execution environment - a long-lived IN-PROCESS `workerd` never becomes ready. The wrangler CLI is unaffected: `npm run dev` (`wrangler pages dev`) serves and hot-reloads normally there, and so does `wrangler d1 execute --local`, so browser verification against local D1 is available. Schema semantics were cross-checked against local D1 (columns, indexes, every CHECK) and matched; `batch()` rollback was confirmed end-to-end through `pages dev`. Production D1's rollback is covered only by Cloudflare's docs.
 
 ## DEPLOYMENT
