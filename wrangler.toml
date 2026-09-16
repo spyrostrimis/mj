@@ -8,6 +8,14 @@ name = "mj"
 compatibility_date = "2026-09-01"
 pages_build_output_dir = "public"
 
+# TEMPORARY, while the app is still being built. "1" opens the journal: the
+# /api/* guard lets every request through and the app never shows the lock
+# screen. Anything other than the exact string "1" leaves the gate on, so
+# deleting this block - or any typo in it - restores the password.
+# Remove it before there is anything real in the journal.
+[vars]
+AUTH_DISABLED = "1"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "mj-journal"

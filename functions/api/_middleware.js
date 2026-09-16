@@ -12,6 +12,13 @@ export async function onRequest(context) {
 
   if (PUBLIC_PATHS.has(pathname)) return context.next();
 
+  // TEMPORARY, while the app is still being built: AUTH_DISABLED opens the
+  // journal to anyone who has the URL. The comparison is against the exact
+  // string '1' so the gate fails closed - an unset, empty, misspelled or
+  // truthy-looking value ('0', 'true', 'yes') all leave the password on.
+  // Set in wrangler.toml; deleting that [vars] block restores the lock.
+  if (env.AUTH_DISABLED === '1') return context.next();
+
   if (!env.APP_PASSWORD) {
     return Response.json(
       { error: 'Server is missing the APP_PASSWORD secret.' },
