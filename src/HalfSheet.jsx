@@ -45,15 +45,24 @@ export function HalfSheet({ target, accent, onCancel, onDelete }) {
   // events, out of the tab order - which is the difference between animating
   // out and the old behaviour of parking it below the fold indefinitely, where
   // it stayed focusable and added scrollable overflow to the frame.
-  const [closing, setClosing] = useState(null);
-  const t = target || closing;
+  //
+  // The last target is held in a ref and read during render, not stashed by an
+  // effect. An effect runs after the render, so for one render both target and
+  // the stash are empty, the panel unmounts, and what comes back is a new node
+  // already at translateY(100%) - and a node mounted at its end state has
+  // nothing to transition from, so the sheet vanishes instead of sliding. The
+  // node has to survive the close for the transform change to animate.
+  const [showing, setShowing] = useState(false);
+  const lastTarget = useRef(null);
+  if (target) lastTarget.current = target;
+
+  const t = target || (showing ? lastTarget.current : null);
 
   const [entered, setEntered] = useState(false);
   const cancelRef = useRef(null);
   const deleteRef = useRef(null);
   const fired     = useRef(false);
   const returnTo  = useRef(null);
-  const lastOpen  = useRef(null);
 
   useEffect(() => {
     if (!open) { setEntered(false); return; }
@@ -66,21 +75,18 @@ export function HalfSheet({ target, accent, onCancel, onDelete }) {
   }, [open]);
 
   useEffect(() => {
-    if (target) {
-      lastOpen.current = target;
-      setClosing(null);
-      return;
-    }
-    if (!lastOpen.current) return;
+    if (target) { setShowing(true); return; }
+    if (!showing) return;
 
-    setClosing(lastOpen.current);
-    lastOpen.current = null;
     // A timer rather than transitionend: a transition that never runs - a
     // hidden tab, a browser that skips it - would otherwise leave the sheet
     // mounted for good.
-    const id = setTimeout(() => setClosing(null), EXIT_MS);
+    const id = setTimeout(() => {
+      lastTarget.current = null;
+      setShowing(false);
+    }, EXIT_MS);
     return () => clearTimeout(id);
-  }, [target]);
+  }, [target, showing]);
 
   // Cancel takes focus, never Delete. A destructive action does not get to be
   // the thing a stray Enter reaches.

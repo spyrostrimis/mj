@@ -22,6 +22,13 @@ import { setupDom, stubFetch, render, click, pressKey, settle, act } from './hel
 import { App } from '../src/Shell.jsx';
 import { TODAY_ISO } from '../src/data.js';
 
+// assert.equal on DOM nodes tries to build a diff when it fails, which walks
+// the whole jsdom tree and exhausts the heap - the failure arrives as an OOM
+// crash instead of a readable message. Identity checks go through ok().
+const same = (a, b, message) => assert.ok(a === b, message);
+const notSame = (a, b, message) => assert.ok(a !== b, message);
+const absent = (value, message) => assert.ok(value === null || value === undefined, message);
+
 const FIXTURE = () => ([
   {
     id: 'p-test-1', pairId: 'p-test-1', date: TODAY_ISO, time: '11:30',
@@ -74,7 +81,7 @@ async function mount() {
 test('tapping a half opens its actions, with Cancel holding focus', async () => {
   const ui = await mount();
   try {
-    assert.equal(ui.dialog(), null, 'no sheet before the tap');
+    absent(ui.dialog(), 'no sheet before the tap');
     assert.equal(ui.halves().length, 3, 'two halves of the pair plus the lone one');
 
     await click(ui.half('monkey half of a pair'));
@@ -87,8 +94,8 @@ test('tapping a half opens its actions, with Cancel holding focus', async () => 
 
     // Cancel takes focus, never Delete: a destructive row must not be what a
     // stray Enter reaches.
-    assert.equal(ui.active(), ui.sheetButton('Cancel'));
-    assert.notEqual(ui.active(), ui.sheetButton('Delete'));
+    same(ui.active(), ui.sheetButton('Cancel'), 'Cancel holds focus');
+    notSame(ui.active(), ui.sheetButton('Delete'), 'and Delete never does');
   } finally { await ui.done(); }
 });
 
@@ -161,14 +168,14 @@ test('Delete leaves focus outside the sheet', async () => {
     await click(ui.half('monkey half of a pair'));
     await click(ui.sheetButton('Delete'));
 
-    assert.equal(ui.dialog(), null, 'the sheet unmounts rather than parking below the fold');
+    absent(ui.dialog(), 'the sheet stops being a dialog the moment it closes');
     assert.ok(
       !ui.active()?.closest?.('[role="dialog"]'),
       'focus must not ride the sheet off-screen - that is what displaced the app'
     );
 
     assert.deepEqual(ui.deletes().map((c) => c.url), ['/api/entries/m-test-1?kind=half']);
-    assert.equal(ui.half('monkey half of a pair'), undefined, 'that half is gone');
+    absent(ui.half('monkey half of a pair'), 'that half is gone');
 
     // Positive control: the pair's other half is untouched, so Delete removed
     // one half and not the moment.
@@ -215,8 +222,8 @@ test('Cancel hands focus back to the tapped half and deletes nothing', async () 
     await click(tapped);
     await click(ui.sheetButton('Cancel'));
 
-    assert.equal(ui.dialog(), null);
-    assert.equal(ui.active(), tapped, 'focus returns to where it came from');
+    absent(ui.dialog(), 'closed');
+    same(ui.active(), tapped, 'focus returns to where it came from');
     assert.deepEqual(ui.deletes(), []);
     assert.equal(ui.halves().length, 3, 'the feed is untouched');
   } finally { await ui.done(); }
@@ -228,12 +235,12 @@ test('Escape and the backdrop both cancel', async () => {
     const tapped = ui.half('monkey half of a pair');
     await click(tapped);
     await pressKey('Escape');
-    assert.equal(ui.dialog(), null, 'Escape closes');
-    assert.equal(ui.active(), tapped, 'and restores focus');
+    absent(ui.dialog(), 'Escape closes');
+    same(ui.active(), tapped, 'and restores focus');
 
     await click(ui.half('lone monkey half'));
     await click(ui.backdrop());
-    assert.equal(ui.dialog(), null, 'a backdrop click closes');
+    absent(ui.dialog(), 'a backdrop click closes');
 
     assert.deepEqual(ui.deletes(), [], 'neither route deletes');
     assert.equal(ui.halves().length, 3);
@@ -247,13 +254,13 @@ test('Tab cycles between Cancel and Delete without leaving the sheet', async () 
     const cancel = ui.sheetButton('Cancel');
     const del = ui.sheetButton('Delete');
 
-    assert.equal(ui.active(), cancel, 'starts on Cancel');
+    same(ui.active(), cancel, 'starts on Cancel');
     await pressKey('Tab');
-    assert.equal(ui.active(), del);
+    same(ui.active(), del, 'forward to Delete');
     await pressKey('Tab');
-    assert.equal(ui.active(), cancel, 'wraps rather than escaping to the feed');
+    same(ui.active(), cancel, 'wraps rather than escaping to the feed');
     await pressKey('Tab', { shiftKey: true });
-    assert.equal(ui.active(), del, 'and wraps backwards too');
+    same(ui.active(), del, 'and wraps backwards too');
   } finally { await ui.done(); }
 });
 
@@ -280,6 +287,7 @@ test('the sheet slides out before it leaves the DOM, inert while it does', async
   try {
     await click(ui.half('monkey half of a pair'));
     assert.ok(ui.dialog(), 'open to begin with');
+    const panelWhileOpen = ui.panel();
 
     await click(ui.sheetButton('Cancel'));
 
@@ -287,7 +295,15 @@ test('the sheet slides out before it leaves the DOM, inert while it does', async
     // focusable sheet below the fold is what broke the app the first time.
     const panel = ui.panel();
     assert.ok(panel, 'the panel stays mounted for the slide-out');
-    assert.equal(ui.dialog(), null, 'and stops being a dialog immediately');
+
+    // The same DOM node, not a replacement. This is the whole trick: a node
+    // that unmounts and comes back already at translateY(100%) has no previous
+    // value to transition from, so it appears at its end state and the sheet
+    // vanishes instead of sliding. Stashing the target in an effect did
+    // exactly that.
+    same(panel, panelWhileOpen, 'the node survives the close - a node remounted ' +
+      'at translateY(100%) has nothing to transition from, so it vanishes');
+    absent(ui.dialog(), 'and stops being a dialog immediately');
     assert.equal(panel.getAttribute('aria-hidden'), 'true');
     assert.equal(panel.style.pointerEvents, 'none');
     assert.match(panel.style.transform, /translateY\(100%\)/, 'sliding down');
@@ -299,7 +315,7 @@ test('the sheet slides out before it leaves the DOM, inert while it does', async
 
     // And then it actually goes. The bug was parking it forever.
     await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
-    assert.equal(ui.panel(), undefined, 'gone once the slide is done');
+    absent(ui.panel(), 'gone once the slide is done');
   } finally { await ui.done(); }
 });
 
