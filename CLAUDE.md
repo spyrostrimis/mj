@@ -2,7 +2,7 @@
 
 PROJECT: Monkey Journal, a private love-language journal for two people: Turtle (the owner) and Monkey (his boyfriend). Turtle is the only intended writer. Both read it. Each item records something Monkey did for Turtle, or something Turtle did for Monkey, tagged with one of five love languages. Live at https://mj.spyrostrimis.com on Cloudflare Pages + D1. Purely personal project. This file is auto-read at session start. Treat everything below as standing rules for this repo.
 
-<!-- ┌─ SYNC v2 · HARD RULES · mirrored in CLAUDE.md + project instructions -->
+<!-- ┌─ SYNC v3 · HARD RULES · mirrored in CLAUDE.md + project instructions -->
 <!-- │  Edit one → edit the other → bump BOTH version numbers. -->
 
 ## HARD RULES
@@ -14,9 +14,10 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
   - The gate goes back on BEFORE the first real entry: delete the `[vars]` block, push, and confirm that `/api/entries` with no cookie returns 401.
   - Turning the gate on or off is always its own commit, never part of another change.
 - Journal content is private.
-  - Never read, print, query, or export LIVE data unless explicitly asked in the current session.
+  - **Build phase (now): every entry, local and production, is test data.** Claude Code may read, query and print any entry without asking, including entries it did not create. This ends when Turtle says real use has started; turning the gate back on is the latest point.
+  - After that: never read, print, query, or export LIVE data unless explicitly asked in the current session.
   - Real entries never appear in commits, test fixtures, screenshots, or logs.
-  - Test data must be obviously fake.
+  - Test data that Code creates must be obviously fake (`TEST FAKE - ...`).
 - Any `--remote` wrangler command is a PRODUCTION operation. State what it will do and wait for confirmation before running it.
 - Before any write to the remote database (migration or data operation), export a backup first: `npx wrangler d1 export mj-journal --remote --output=D:\Documents\homepage\mj-backups\<YYYY-MM-DD>-<reason>.sql`. That backup folder is OUTSIDE the repo and never committed.
 - Schema changes go ONLY through D1 migrations in `migrations/`. Never edit a migration that has already been applied. Never drop or rebuild a table holding real entries without a migration that preserves them.
@@ -26,7 +27,7 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
   - Claude Code worktree branches are local scratch space only. They are never pushed, are merged into `main` locally, and are removed once `main` contains them.
 - `wrangler.toml` is the source of truth for Pages configuration, bindings and plain (non-secret) vars. The dashboard shows them read-only. Change them in the file, never in the dashboard. (Verified against Cloudflare's Pages docs.)
 
-<!-- └─ /SYNC v2 · HARD RULES -->
+<!-- └─ /SYNC v3 · HARD RULES -->
 
 ## STACK
 
@@ -130,6 +131,7 @@ All commands run in PowerShell from the repo root, `D:\Documents\homepage\mj.spy
 - `npm install`
 - `npm run build` bundles the frontend.
 - `npm run dev` builds, then runs `wrangler pages dev` at http://localhost:8788 against LOCAL D1.
+- Browser pane: `.claude/launch.json` defines the `mj` configuration (`npm run dev`, port 8788), so the preview can start the app by name. Plain `"npm"` spawns correctly on this machine (tested); if that ever regresses, change it to `"npm.cmd"`.
 - `npm run db:migrate` applies `migrations/` to LOCAL D1; `npm run db:status` lists what is outstanding. Both are `--local`. There is deliberately no remote script: applying to production is typed out in full, after a backup.
 - Local password: `.dev.vars` containing `APP_PASSWORD=...`. Create it with `"APP_PASSWORD=..." | Out-File .dev.vars -Encoding ascii`. Plain `echo >` in Windows PowerShell writes UTF-16, which wrangler may not read.
 - Local gate: `wrangler.toml` `[vars]` applies to `pages dev` too, so local dev is currently open. To exercise the lock screen locally, add `AUTH_DISABLED=0` to `.dev.vars`. Cloudflare's docs say `.dev.vars` overrides `[vars]`; confirm this on this wrangler 3.x before relying on it.
