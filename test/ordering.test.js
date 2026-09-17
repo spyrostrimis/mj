@@ -112,3 +112,84 @@ test('groupByDate keeps the days themselves newest-first', () => {
   assert.deepEqual(groups.map((g) => g.date), ['2026-09-15', '2026-09-14']);
   assert.equal(ids(groups[0].entries), 'b,c');
 });
+
+// ---------------------------------------------------------------------------
+// The Calendar day list, rendered for real.
+//
+// The Calendar keeps its own sorted copy in a useMemo, so the pure tests above
+// say nothing about it. It is in jsdom rather than tested as a bare function
+// because that memo is where the second copy of the comparator lived, and a
+// pure test would have gone on passing while the screen kept its own.
+
+import React from 'react';
+import { setupDom, render } from './helpers/dom.js';
+import { CalendarScreen } from '../src/Calendar.jsx';
+import { TODAY_ISO } from '../src/data.js';
+
+const loneMonkey = (id, time, text) => ({
+  id, pairId: null, date: TODAY_ISO, time,
+  monkey: { id, lang: 'acts', text },
+  turtle: null,
+});
+
+// Which of two texts the DOM puts first. textContent is built in document
+// order, so an index comparison is an order comparison - and it needs no
+// geometry, which jsdom does not have.
+const firstOf = (container, a, b) => {
+  const ia = container.textContent.indexOf(a);
+  const ib = container.textContent.indexOf(b);
+  assert.ok(ia !== -1, `${a} was never rendered`);
+  assert.ok(ib !== -1, `${b} was never rendered`);
+  return ia < ib ? a : b;
+};
+
+const NEWER = 'TEST FAKE - saved second';
+const OLDER = 'TEST FAKE - saved first';
+
+async function mountCalendar(entries) {
+  const dom = setupDom();
+  const view = await render(
+    React.createElement(CalendarScreen, {
+      entries,
+      onBack: () => {},
+      onHalfTap: null,
+      accent: '#8a7d6b',
+    })
+  );
+  return {
+    container: view.container,
+    async done() {
+      await view.unmount();
+      dom.teardown();
+    },
+  };
+}
+
+test('the calendar day list keeps a same-minute moment on top', async () => {
+  // Newest first, the order the app holds them in.
+  const cal = await mountCalendar([
+    loneMonkey('m-new', '17:57', NEWER),
+    loneMonkey('m-old', '17:57', OLDER),
+  ]);
+
+  try {
+    assert.equal(firstOf(cal.container, NEWER, OLDER), NEWER);
+  } finally {
+    await cal.done();
+  }
+});
+
+// Positive control on the same fixture shape: the sort still has to do its
+// actual job, or the test above would pass on a comparator that did nothing.
+test('the calendar day list still puts a later time above an earlier one', async () => {
+  const cal = await mountCalendar([
+    loneMonkey('m-early', '09:00', OLDER),
+    loneMonkey('m-late',  '17:57', NEWER),
+  ]);
+
+  try {
+    assert.equal(firstOf(cal.container, NEWER, OLDER), NEWER);
+  } finally {
+    await cal.done();
+  }
+});

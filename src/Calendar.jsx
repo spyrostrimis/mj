@@ -8,7 +8,7 @@ import { EntryBlock } from './Today.jsx';
 import { ChevronLeft, ChevronRight } from './icons.jsx';
 import {
   TODAY, TODAY_ISO, DAYS_TINY, DAYS_SHORT, MONTHS_SHORT, MONTHS_LONG,
-  dateToISO, parseISO, weekday, isToday, isFuture,
+  dateToISO, parseISO, weekday, isToday, isFuture, newestFirst,
 } from './data.js';
 
 function MonthGrid({ year, month, selectedISO, entriesByDate, accent, onSelect }) {
@@ -73,7 +73,11 @@ export function CalendarScreen({ entries, onBack, onHalfTap, accent }) {
   const entriesByDate = useMemo(() => {
     const m = {};
     for (const e of entries) (m[e.date] = m[e.date] || []).push(e);
-    for (const arr of Object.values(m)) arr.sort((a, b) => (a.time > b.time ? -1 : 1));
+    // Shares the feed's comparator rather than keeping a second copy. The one
+    // that used to live here had the same flaw in the other direction: it
+    // returned 1 for a tie, so same-minute moments in a day's list were left
+    // to whatever the sort happened to do with a contradictory answer.
+    for (const arr of Object.values(m)) arr.sort(newestFirst);
     return m;
   }, [entries]);
 
