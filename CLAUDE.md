@@ -158,11 +158,15 @@ All commands run in PowerShell from the repo root, `D:\Documents\homepage\mj.spy
 ## ENVIRONMENT
 
 - Windows PowerShell blocks `npm.ps1` under the default execution policy. Use `npm.cmd`, or `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` in a non-admin window.
-- **Browser pane compositing (this cost two shipped bugs).** When the Claude Code desktop window is minimised or behind another window, the built-in browser pane does not composite.
-  - `requestAnimationFrame` never fires, screenshots time out, and `window.innerWidth/innerHeight` report 0.
+- **Browser pane compositing (this cost two shipped bugs).** The built-in browser pane runs `requestAnimationFrame` only while it is actually being painted to screen. Three states stop that, all the same root cause - the page has no on-screen surface:
+  1. **The pane is hidden** (not displayed in the app layout). The common one: `preview_start` reuses a previously collapsed pane, so the pane can stay hidden with the window in front.
+  2. The Claude Code window is minimised.
+  3. The window is fully covered by another window.
+  - In that state rAF never fires and screenshots time out. Everything else looks healthy: `document.visibilityState` reports `visible`, layout is live so `getBoundingClientRect` returns real numbers, and the viewport is usually a normal size - 1024×768 and 900×628 measured with rAF dead on 2026-09-17. Do NOT use `innerWidth === 0` as the tell. Focus is irrelevant: `document.hasFocus()` was `false` both when rAF was dead and when it ran at 60fps.
   - rAF-gated state never advances, so sheets and modals never really open. Driving their buttons by DOM ref still "works", so verification reports success while the UI is broken.
-  - **Rule:** before claiming a UI change verified in `pages dev`, probe the pane with a double-rAF promise with a timeout, plus `innerWidth`. If rAF does not fire, say that verification is DOM-level only and ask Turtle to look.
-  - `resize_window` fixes a 0×0 viewport but does NOT restore compositing.
+  - **Rule:** before claiming a UI change verified in `pages dev`, check `tabs_context` - it states outright whether the pane is displayed or hidden, in one call. Fall back to a double-rAF promise with a timeout only if that is ambiguous. If the pane is not painting, say that verification is DOM- and geometry-level only and ask Turtle to display the pane.
+  - Code cannot display the pane itself; `show_pane` covers diff, file, terminal, pr, tasks, plan and artifact, but not the browser. `resize_window` fixes a 0×0 viewport but does NOT restore painting.
+  - Once it is painting: a `screenshot` in the same `browser_batch` as a click can capture the pre-repaint frame, so take it in its own call; and `zoom` region crop is unsupported in the pane - use `resize_window` with the mobile preset to inspect the phone UI at 1:1.
   - Treat an odd-looking screenshot as a finding, never as a rendering glitch.
 
 ## DEPLOYMENT
