@@ -20,6 +20,7 @@ Live at **https://mj.spyrostrimis.com**
 ```
 .
 ├── wrangler.toml            Cloudflare config + D1 binding
+├── .claude/launch.json      Dev-server config for the editor preview (npm run dev, :8788)
 ├── migrations/              D1 migrations - the schema, versioned
 ├── functions/               Pages Functions (the API)
 │   ├── _session.js            Password check + signed session cookie
@@ -27,26 +28,38 @@ Live at **https://mj.spyrostrimis.com**
 │       ├── _middleware.js     Guards every /api/* route except login
 │       ├── auth.js            POST login · GET check · DELETE logout
 │       ├── entries.js         GET list · POST create
-│       └── entries/[id].js    DELETE one
+│       └── entries/[id].js    DELETE one pair or one half (?kind=pair|half)
 ├── src/                     Frontend source (bundled by esbuild)
 │   ├── main.jsx               Entry point
 │   ├── Shell.jsx              Phone frame, tabs, auth + entries state
 │   ├── Lock.jsx               Password gate
+│   ├── Unavailable.jsx        Error screen when the journal cannot load
 │   ├── Today.jsx              Reverse-chronological feed
 │   ├── Insights.jsx           Hairline bars, Him / Me / Both
 │   ├── Calendar.jsx           Monthly grid
-│   ├── Sheet.jsx              Bottom-sheet composer
+│   ├── Sheet.jsx              Bottom-sheet composer (Monkey half + Turtle half)
+│   ├── HalfSheet.jsx          Half-actions sheet: the tapped half, Delete, Cancel
 │   ├── layout.jsx             Shared screen primitives
 │   ├── mascots.jsx            Monkey + Turtle
 │   ├── icons.jsx              UI icons
-│   ├── data.js                Dates, love languages, stats
+│   ├── data.js                Dates, love languages, stats, failure helpers
 │   └── api.js                 Fetch wrappers
 ├── test/                    node:test suites (npm test)
+│   └── helpers/
+│       ├── migrate.js         Applies migrations/ to an in-memory node:sqlite DB
+│       ├── d1.js              D1Database-shaped wrapper over node:sqlite
+│       ├── dom.js             jsdom document + React root, fetch stub, act helpers
+│       ├── jsx-loader.mjs     esbuild load hook so node --test can import .jsx
+│       └── register-jsx.mjs   Installs that hook (used via node --import)
 └── public/                  Served as-is by Pages
     ├── index.html
     ├── css/styles.css
+    ├── fonts/                 Self-hosted woff2 + OFL licenses (see its README)
     └── assets/app.js          Build output (gitignored)
 ```
+
+Fonts are self-hosted from `public/fonts/`, so the app makes no third-party
+request at runtime.
 
 ---
 
@@ -54,7 +67,7 @@ Live at **https://mj.spyrostrimis.com**
 
 ### 1. Clone it
 
-```bash
+```powershell
 cd D:\Documents\homepage
 git clone https://github.com/spyrostrimis/mj.git mj.spyrostrimis.com
 cd mj.spyrostrimis.com
@@ -116,9 +129,17 @@ npm test
 ```
 
 Node's built-in runner (`node:test`) - there is no test framework dependency.
-Handler tests import the Pages Functions directly and run them against a
-`Request`; database tests apply the real `migrations/` files to an in-memory
-SQLite database via `node:sqlite`.
+Three tiers:
+
+- **No database.** Handler tests import the Pages Functions directly and run
+  them against a `Request` and a fake `env`.
+- **Database.** The real `migrations/` files are applied to an in-memory
+  SQLite database via `node:sqlite`.
+- **DOM.** The real components are rendered into jsdom. `node --test` cannot
+  import `.jsx`, so `test/helpers/register-jsx.mjs` installs an esbuild load
+  hook with the same transform settings as `npm run build` - which is why the
+  test script passes `--import` before `--test`. jsdom does no layout, so
+  these tests assert DOM state, focus and inline styles, never geometry.
 
 ---
 
@@ -274,4 +295,12 @@ Free, with a lot of headroom:
   open overnight still thinks it is yesterday. Reload after midnight.
 - Saving is optimistic: the moment appears immediately and is rolled back
   with a message if the write fails.
-- `DELETE /api/entries/:id` works but has no button in the UI yet.
+- Deleting a half: tapping a half in the feed opens the half-actions sheet,
+  whose Delete sends `DELETE /api/entries/:id?kind=half`. The `kind` is
+  required - a `pair_id` and a row id are different id spaces that may hold
+  the same string - and a missing or unknown kind is a 400.
+- `kind=pair` removes both halves of a pair, so a pair is never left as an
+  orphaned single. Nothing in the UI sends it yet; deleting a whole pair is
+  still a command you type.
+- Delete is permanent: no undo, no soft delete. There is no edit endpoint and
+  no edit UI.
