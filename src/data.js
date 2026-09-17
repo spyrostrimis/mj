@@ -75,11 +75,22 @@ export function relativeLabel(iso) {
   return MONTHS_SHORT[e.m] + ' ' + e.d;
 }
 
+// Newest first, by date then time.
+//
+// Returning 0 for the same minute is the whole point. Array.prototype.sort is
+// stable, so moments that tie keep the order they arrived in - and that order
+// is already newest-first, both from the API and from the optimistic prepend.
+// A comparator that never returns 0 claims a is before b AND b is before a,
+// which reversed every same-minute run and pushed a just-saved moment under
+// the one before it.
+export function newestFirst(a, b) {
+  if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+  if (a.time !== b.time) return a.time < b.time ? 1 : -1;
+  return 0;
+}
+
 export function sortDesc(entries) {
-  return [...entries].sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-    return a.time < b.time ? 1 : -1;
-  });
+  return [...entries].sort(newestFirst);
 }
 
 export function groupByDate(entries) {

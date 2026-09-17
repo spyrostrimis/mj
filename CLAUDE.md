@@ -94,6 +94,7 @@ test/
   shell-gate.test.js       Where a failed load sends the shell (loadFailure)
   half-delete.test.js      removeHalf / restoreHalf / deleteFailure
   api-client.test.js       deleteEntry refuses to guess an id space; URL shape
+  ordering.test.js         Same-minute ordering: a moment saved second stays on top
   half-sheet-dom.test.js   The half-actions sheet rendered in jsdom: focus, Escape,
                            Tab trap, double-tap latch, composer stays parked
   auth-disabled.test.js    Middleware bypass: open only for the exact string '1'
