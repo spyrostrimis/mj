@@ -193,3 +193,130 @@ test('the calendar day list still puts a later time above an earlier one', async
     await cal.done();
   }
 });
+
+// ---------------------------------------------------------------------------
+// The order GET /api/entries returns, against the real migration.
+//
+// The client sort is stable, so whatever arrives from here is what the feed
+// shows on a fresh load. id cannot break a tie: it is a random uuid.
+
+import { onRequestGet, onRequestPost } from '../functions/api/entries.js';
+import { freshDatabase } from './helpers/migrate.js';
+import { d1 } from './helpers/d1.js';
+
+const newEnv = () => ({ DB: d1(freshDatabase()) });
+
+const feed = async (env) => {
+  const res = await onRequestGet({ env });
+  assert.equal(res.status, 200);
+  return res.json();
+};
+
+const postTo = (env, body) =>
+  onRequestPost({
+    request: new Request('https://mj.test/api/entries', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+    env,
+  });
+
+// Writes a row with an explicit created_at. The default is datetime('now'),
+// whole seconds, so two rows inserted by a test land in the same second and
+// tie - which is the one case this ordering cannot resolve. Stamping it here
+// is what lets the test describe two saves a minute apart in wall-clock terms
+// while sharing an HH:MM.
+const insertRow = (env, { id, subject, lang, body, date, time, createdAt, pairId = null }) =>
+  env.DB._raw
+    .prepare(
+      `INSERT INTO moments (id, pair_id, subject, lang, body, entry_date, entry_time, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(id, pairId, subject, lang, body, date, time, createdAt);
+
+const bodies = (list) =>
+  list.map((e) => (e.monkey || e.turtle).text).join(' | ');
+
+// The ids are chosen so that the old `id DESC` tie-break gives the WRONG
+// answer: 't-zzz' sorts above 'm-aaa', and the turtle row is the older one.
+test('a later created_at wins a same-minute tie, whatever the ids are', async () => {
+  const env = newEnv();
+
+  insertRow(env, {
+    id: 't-zzz', subject: 'turtle', lang: 'words', body: OLDER,
+    date: '2026-09-15', time: '17:57', createdAt: '2026-09-15 17:57:02',
+  });
+  insertRow(env, {
+    id: 'm-aaa', subject: 'monkey', lang: 'acts', body: NEWER,
+    date: '2026-09-15', time: '17:57', createdAt: '2026-09-15 17:57:41',
+  });
+
+  assert.equal(bodies(await feed(env)), `${NEWER} | ${OLDER}`);
+});
+
+// The same fixture with the subjects swapped. The old tie-break got this one
+// right by luck, which is exactly why the bug looked intermittent.
+test('the same tie is resolved the same way with the subjects swapped', async () => {
+  const env = newEnv();
+
+  insertRow(env, {
+    id: 'm-zzz', subject: 'monkey', lang: 'acts', body: OLDER,
+    date: '2026-09-15', time: '17:57', createdAt: '2026-09-15 17:57:02',
+  });
+  insertRow(env, {
+    id: 't-aaa', subject: 'turtle', lang: 'words', body: NEWER,
+    date: '2026-09-15', time: '17:57', createdAt: '2026-09-15 17:57:41',
+  });
+
+  assert.equal(bodies(await feed(env)), `${NEWER} | ${OLDER}`);
+});
+
+// Positive control: created_at must not be allowed to outrank the journal's
+// own date and time. A moment written today about yesterday stays under
+// yesterday's heading, not on top of the feed.
+test('created_at never overrules entry_date or entry_time', async () => {
+  const env = newEnv();
+
+  insertRow(env, {
+    id: 'm-today', subject: 'monkey', lang: 'acts', body: NEWER,
+    date: '2026-09-15', time: '09:00', createdAt: '2026-09-15 09:00:00',
+  });
+  // Written later, but backdated: it belongs below.
+  insertRow(env, {
+    id: 'm-backdated', subject: 'monkey', lang: 'gifts', body: OLDER,
+    date: '2026-09-14', time: '23:00', createdAt: '2026-09-15 20:00:00',
+  });
+
+  assert.equal(bodies(await feed(env)), `${NEWER} | ${OLDER}`);
+});
+
+test('a real POST stamps created_at, so the tie-break has something to read', async () => {
+  const env = newEnv();
+
+  const res = await postTo(env, {
+    date: '2026-09-15', time: '17:57',
+    monkey: { id: 'm-1', text: 'TEST FAKE - stamped', lang: 'acts' },
+  });
+  assert.equal(res.status, 201);
+
+  const row = env.DB._raw.prepare('SELECT created_at FROM moments WHERE id = ?').get('m-1');
+  assert.match(row.created_at, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+});
+
+// Both halves of a pair are written in one batch, so they share a second and
+// the pair still reads back as one moment.
+test('a pair written in one batch still groups into a single moment', async () => {
+  const env = newEnv();
+
+  const res = await postTo(env, {
+    date: '2026-09-15', time: '17:57', pairId: 'p-1',
+    monkey: { id: 'm-1', text: 'TEST FAKE - monkey half', lang: 'acts' },
+    turtle: { id: 't-1', text: 'TEST FAKE - turtle half', lang: 'words' },
+  });
+  assert.equal(res.status, 201);
+
+  const list = await feed(env);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].monkey.text, 'TEST FAKE - monkey half');
+  assert.equal(list[0].turtle.text, 'TEST FAKE - turtle half');
+});

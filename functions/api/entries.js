@@ -11,10 +11,17 @@ const MAX_ID = 64;
 
 const LABEL = { monkey: "Monkey's", turtle: "Turtle's" };
 
+// created_at breaks a same-minute tie, because id cannot: it is a random
+// uuid, so two moments written in the same minute came back in arbitrary
+// order. It was not even evenly arbitrary - 't-' sorts above 'm-', so a Turtle
+// half sat above a Monkey-only moment at the same HH:MM every time, whichever
+// was written first. created_at has whole-second resolution, finer than the
+// HH:MM the journal itself records. id DESC stays last so ties are at least
+// stable.
 const SELECT_ALL =
   `SELECT id, pair_id, subject, lang, body, entry_date, entry_time
      FROM moments
-    ORDER BY entry_date DESC, entry_time DESC, id DESC`;
+    ORDER BY entry_date DESC, entry_time DESC, created_at DESC, id DESC`;
 
 const INSERT_HALF =
   `INSERT INTO moments (id, pair_id, subject, lang, body, entry_date, entry_time)

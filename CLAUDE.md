@@ -125,6 +125,8 @@ Columns: `id`, `pair_id` (nullable - this is the single/pair switch), `subject`,
 
 `GET /api/entries` groups rows into one item per moment - `{ id, pairId, date, time, monkey, turtle }` with `null` for a missing half - and `POST` takes that same shape back. A pair is written with `batch()`, which D1 runs as a transaction; D1 does not accept explicit BEGIN/COMMIT.
 
+Ordering is newest-first at both ends. The feed reads `ORDER BY entry_date DESC, entry_time DESC, created_at DESC, id DESC`: `entry_date`/`entry_time` are the journal's own timestamp, `created_at` breaks a same-minute tie because `id` is a random uuid and cannot, and `id` is the last resort so the order is at least stable. On the client, `newestFirst` in `data.js` is the single comparator - it returns 0 on a tie, so the stable sort preserves what the API sent and keeps an optimistically-prepended moment on top.
+
 ## RUN / TEST
 
 All commands run in PowerShell from the repo root, `D:\Documents\homepage\mj.spyrostrimis.com`.
@@ -210,6 +212,7 @@ These are known, not bugs to fix on sight. Work from the specific instruction gi
   - `kind=pair` removes every row of that pair, so a pair is never left as an orphaned single.
   - `kind=half` removes exactly that one row by primary key; an unpaired moment is deleted as its half.
   - Tapping a half in the feed opens a half-actions sheet whose Delete sends `kind=half`. That is the only kind the UI sends, so deleting a whole pair in one action is still a `--remote` command.
+- Two moments saved inside the same SECOND tie in the feed and fall back to a random id. `entry_time` records only HH:MM and `created_at` only whole seconds. Not reachable by hand; a millisecond `created_at` would need a new migration.
 - Delete is permanent: no undo, no soft delete.
 - No Edit: no PUT/PATCH endpoint and no edit UI.
 - Sheet entry (composer and half-actions sheet) is gated on a double rAF. If rAF is throttled, a sheet stays invisible.
