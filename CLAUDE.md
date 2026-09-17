@@ -97,6 +97,8 @@ test/
   ordering.test.js         Same-minute ordering: a moment saved second stays on top
   half-sheet-dom.test.js   The half-actions sheet rendered in jsdom: focus, Escape,
                            Tab trap, double-tap latch, composer stays parked
+  tabs-dom.test.js         Bottom-tab navigation in jsdom: every tab reachable
+                           from every other one
   auth-disabled.test.js    Middleware bypass: open only for the exact string '1'
   helpers/migrate.js       Applies migrations/ to a fresh in-memory node:sqlite DB
   helpers/d1.js            D1Database-shaped wrapper over node:sqlite

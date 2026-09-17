@@ -5,7 +5,7 @@
 import { useState, useMemo } from 'react';
 import { ScreenShell, ScreenScroll } from './layout.jsx';
 import { EntryBlock } from './Today.jsx';
-import { ChevronLeft, ChevronRight } from './icons.jsx';
+import { ChevronLeft, ChevronRight, TodayIcon } from './icons.jsx';
 import {
   TODAY, TODAY_ISO, DAYS_TINY, DAYS_SHORT, MONTHS_SHORT, MONTHS_LONG,
   dateToISO, parseISO, weekday, isToday, isFuture, newestFirst,
@@ -113,8 +113,8 @@ export function CalendarScreen({ entries, onBack, onHalfTap, accent }) {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '18px 16px 14px',
       }}>
-        <button className="icon-btn" onClick={onBack} aria-label="Back">
-          <ChevronLeft size={20} color="#5a554c"/>
+        <button className="icon-btn" onClick={onBack} aria-label="Today">
+          <TodayIcon size={20} color="#5a554c"/>
         </button>
         <div style={{
           fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",

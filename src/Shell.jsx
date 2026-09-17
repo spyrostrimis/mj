@@ -2,7 +2,7 @@
 // App component that owns auth state, entries, and overlay state.
 
 import { useState, useEffect } from 'react';
-import { TodayIcon, InsightsIcon } from './icons.jsx';
+import { TodayIcon, CalIcon, InsightsIcon } from './icons.jsx';
 import { TodayScreen } from './Today.jsx';
 import { InsightsScreen } from './Insights.jsx';
 import { CalendarScreen } from './Calendar.jsx';
@@ -21,10 +21,11 @@ const FRAME_BP = 720;
 function BottomTabs({ active, onChange, accent }) {
   const tabs = [
     { id: 'today',    label: 'Today',    icon: TodayIcon },
+    { id: 'calendar', label: 'Calendar', icon: CalIcon },
     { id: 'insights', label: 'Insights', icon: InsightsIcon },
   ];
   return (
-    <div style={{
+    <div data-tabs style={{
       position: 'absolute', left: 0, right: 0, bottom: 0,
       paddingBottom: 'env(safe-area-inset-bottom, 0)',
       background: 'rgba(250,250,247,0.92)',
@@ -33,7 +34,7 @@ function BottomTabs({ active, onChange, accent }) {
       borderTop: '1px solid rgba(26,26,26,0.06)',
       zIndex: 5,
     }}>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 28, padding: '10px 0 14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '10px 0 14px' }}>
         {tabs.map(t => {
           const isActive = active === t.id;
           const Icon = t.icon;
@@ -175,8 +176,9 @@ export function App() {
   const [gateMessage, setGateMessage] = useState('');
   // Transient trouble with the journal already on screen - a failed save.
   const [loadError, setError]   = useState('');
+  // 'today' | 'calendar' | 'insights' - the calendar is a tab, not a mode
+  // layered over Today, so tapping Today always lands on Today.
   const [tab, setTab]           = useState('today');
-  const [calendar, setCalendar] = useState(false);
   const [sheet, setSheet]       = useState(false);
   // The half whose actions are open, with everything a rollback needs:
   // { moment, who, half, index, lastHalf }.
@@ -264,20 +266,20 @@ export function App() {
   let screen;
   if (tab === 'insights') {
     screen = <InsightsScreen entries={entries} accent={ACCENT}/>;
-  } else if (calendar) {
+  } else if (tab === 'calendar') {
     screen = (
       <CalendarScreen
         entries={entries}
         accent={ACCENT}
         onHalfTap={openHalf}
-        onBack={() => setCalendar(false)}/>
+        onBack={() => setTab('today')}/>
     );
   } else {
     screen = (
       <TodayScreen
         entries={entries}
         accent={ACCENT}
-        onCal={() => setCalendar(true)}
+        onCal={() => setTab('calendar')}
         onNew={() => setSheet(true)}
         onHalfTap={openHalf}/>
     );
@@ -303,7 +305,7 @@ export function App() {
         <BottomTabs
           active={tab}
           accent={ACCENT}
-          onChange={(id) => { setTab(id); if (id !== 'today') setCalendar(false); }}/>
+          onChange={setTab}/>
       )}
 
       <QuickSheet
