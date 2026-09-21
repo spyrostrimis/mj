@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 
 import {
   TRIPS, FALLBACK_CLOCK, SILENT_TAP,
-  isShowable, clockFor, tripDateLabel, pickTrip,
+  isShowable, clockFor, tripDateLabel, pickTrip, tripForDate,
 } from '../src/trips.js';
 import { photoRatio, DEFAULT_RATIO } from '../src/TripSheet.jsx';
 
@@ -90,7 +90,41 @@ test('the shipped list is usable as written', () => {
   }
 });
 
+test('a trip belongs to its month and day in every year', () => {
+  const napoli = { date: '2026-09-21', place: 'Napoli' };
+  const list = [napoli, { date: '2026-05-08', place: 'Lisboa' }];
 
+  assert.equal(tripForDate('2026-09-21', list), napoli, 'its own year');
+  assert.equal(tripForDate('2019-09-21', list), napoli, 'a year before it happened');
+  assert.equal(tripForDate('2031-09-21', list), napoli, 'and one long after');
+
+  // Positive control on the same list: the match is month AND day, not either.
+  assert.equal(tripForDate('2026-09-22', list), null, 'the next day is nobody');
+  assert.equal(tripForDate('2026-10-21', list), null, 'nor the same day next month');
+});
+
+test('tripForDate refuses anything that is not a date', () => {
+  const list = [{ date: '2026-09-21', place: 'Napoli' }];
+  for (const bad of ['', '09-21', '2026-9-21', '21/09/2026', null, undefined, 20260921]) {
+    assert.equal(tripForDate(bad, list), null, JSON.stringify(bad) + ' is not a date');
+  }
+  assert.equal(tripForDate('2026-09-21', list), list[0], 'but a real one still matches');
+});
+
+test('tripForDate skips a trip that could not be shown', () => {
+  const broken = { date: '2026-13-21', place: 'Nowhere' };
+  const real   = { date: '2026-09-21', place: 'Napoli' };
+  assert.equal(tripForDate('2026-13-21', [broken]), null, 'never showable, never matched');
+  assert.equal(tripForDate('2026-09-21', [broken, real]), real);
+});
+
+test('two trips on the same day resolve the same way every time', () => {
+  // The calendar must not change its mind between taps, so first-in-list wins.
+  const first  = { date: '2020-09-21', place: 'Napoli' };
+  const second = { date: '2024-09-21', place: 'Palermo' };
+  const list = [first, second];
+  for (let i = 0; i < 20; i++) assert.equal(tripForDate('2026-09-21', list), first);
+});
 
 test('the silent tap style gives nothing away', () => {
   assert.equal(SILENT_TAP.cursor, 'default', 'a pointer is the loudest tell');

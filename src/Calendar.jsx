@@ -10,6 +10,22 @@ import {
   TODAY, TODAY_ISO, DAYS_TINY, DAYS_SHORT, MONTHS_SHORT, MONTHS_LONG,
   dateToISO, parseISO, weekday, isToday, isFuture, newestFirst,
 } from './data.js';
+import { tripForDate, SILENT_TAP } from './trips.js';
+
+// The one wink on the phone.
+//
+// The calendar is already a map of dates, so a trip needs no disguise here -
+// the date is just sitting there being a date. What marks it is the copy, not
+// the styling: "Or is it?" and "not just" invite the tap, while the span
+// itself sets no colour, size or cursor of its own and stays out of the tab
+// order. The words do the inviting; nothing visual does.
+function TripHint({ trip, onTrip, children }) {
+  return (
+    <span data-trip-hint onClick={() => onTrip(trip)} style={SILENT_TAP}>
+      {children}
+    </span>
+  );
+}
 
 function MonthGrid({ year, month, selectedISO, entriesByDate, accent, onSelect }) {
   const firstDow    = new Date(year, month, 1).getDay();
@@ -69,7 +85,7 @@ function MonthGrid({ year, month, selectedISO, entriesByDate, accent, onSelect }
   );
 }
 
-export function CalendarScreen({ entries, onBack, onHalfTap, accent }) {
+export function CalendarScreen({ entries, onBack, onHalfTap, onTrip, accent }) {
   const entriesByDate = useMemo(() => {
     const m = {};
     for (const e of entries) (m[e.date] = m[e.date] || []).push(e);
@@ -100,6 +116,10 @@ export function CalendarScreen({ entries, onBack, onHalfTap, accent }) {
   };
 
   const selDay = entriesByDate[selected] || [];
+  const countLabel = selDay.length + ' ' + (selDay.length === 1 ? 'moment' : 'moments');
+  // Without a handler the calendar keeps its plain copy rather than growing a
+  // dead wink, the same way a half without onTap stays plain text.
+  const tripHere = onTrip ? tripForDate(selected) : null;
   const selLabel = selected === TODAY_ISO
     ? 'Today'
     : (() => {
@@ -155,7 +175,9 @@ export function CalendarScreen({ entries, onBack, onHalfTap, accent }) {
             <div style={{ fontSize: 11, color: '#9a958d', letterSpacing: 0.4 }}>
               {selDay.length === 0
                 ? '—'
-                : selDay.length + ' ' + (selDay.length === 1 ? 'moment' : 'moments')}
+                : (tripHere
+                    ? <TripHint trip={tripHere} onTrip={onTrip}>{'not just ' + countLabel}</TripHint>
+                    : countLabel)}
             </div>
           </div>
 
@@ -164,7 +186,12 @@ export function CalendarScreen({ entries, onBack, onHalfTap, accent }) {
               paddingTop: 24,
               fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
               fontSize: 17, color: '#b8b3aa', fontStyle: 'italic', lineHeight: 1.4,
-            }}>Nothing logged on this day.</div>
+            }}>
+              Nothing logged on this day.
+              {tripHere && (
+                <>{' '}<TripHint trip={tripHere} onTrip={onTrip}>Or is it?</TripHint></>
+              )}
+            </div>
           ) : (
             selDay.map((e, i) => (
               <div key={e.id}>

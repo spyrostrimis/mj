@@ -214,6 +214,9 @@ export function App() {
   // The half whose actions are open, with everything a rollback needs:
   // { moment, who, half, index, lastHalf }.
   const [target, setTarget]     = useState(null);
+  // The trip a calendar date turned out to be hiding. Separate from the status
+  // bar clock's own sheet, which lives in the frame and never changes trip.
+  const [tripDay, setTripDay]   = useState(null);
 
   const fetchEntries = async () => {
     try {
@@ -303,6 +306,7 @@ export function App() {
         entries={entries}
         accent={ACCENT}
         onHalfTap={openHalf}
+        onTrip={setTripDay}
         onBack={() => setTab('today')}/>
     );
   } else {
@@ -350,6 +354,12 @@ export function App() {
         accent={ACCENT}
         onCancel={() => setTarget(null)}
         onDelete={handleDeleteHalf}/>
+
+      <TripSheet
+        open={!!tripDay}
+        trip={tripDay}
+        accent={ACCENT}
+        onClose={() => setTripDay(null)}/>
     </PhoneFrame>
   );
 }

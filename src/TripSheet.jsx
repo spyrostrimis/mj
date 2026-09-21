@@ -72,6 +72,14 @@ export function TripSheet({ open, trip, accent, onClose }) {
   const [entered, setEntered] = useState(false);
   const closeRef = useRef(null);
 
+  // The status bar clock always hands over the same trip, but the calendar
+  // hands over a different one each time and clears it on close - and a panel
+  // whose content vanishes unmounts mid-slide. Holding the last trip in a ref
+  // read during render (not stashed by an effect, which runs a render too
+  // late) keeps the same node on screen for the way out.
+  const lastTrip = useRef(null);
+  if (trip) lastTrip.current = trip;
+  const t = trip || (showing ? lastTrip.current : null);
 
   // preventScroll for the same reason as the half sheet: the phone frame
   // clips with overflow:hidden, which is still programmatically scrollable,
@@ -91,7 +99,10 @@ export function TripSheet({ open, trip, accent, onClose }) {
     if (open) { setShowing(true); return; }
     if (!showing) return;
     // A timer rather than transitionend, which a hidden tab may never fire.
-    const id = setTimeout(() => setShowing(false), EXIT_MS);
+    const id = setTimeout(() => {
+      lastTrip.current = null;
+      setShowing(false);
+    }, EXIT_MS);
     return () => clearTimeout(id);
   }, [open, showing]);
 
@@ -116,9 +127,9 @@ export function TripSheet({ open, trip, accent, onClose }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
-  if (!trip || (!open && !showing)) return null;
+  if (!t || (!open && !showing)) return null;
 
-  const dateLabel = tripDateLabel(trip);
+  const dateLabel = tripDateLabel(t);
 
   return (
     <>
@@ -139,7 +150,7 @@ export function TripSheet({ open, trip, accent, onClose }) {
         role={open ? 'dialog' : undefined}
         aria-modal={open ? 'true' : undefined}
         aria-hidden={open ? undefined : 'true'}
-        aria-label={open ? trip.place + ', ' + dateLabel : undefined}
+        aria-label={open ? t.place + ', ' + dateLabel : undefined}
         style={{
           pointerEvents: open ? 'auto' : 'none',
           position: 'absolute', left: 0, right: 0, bottom: 0,
@@ -161,24 +172,24 @@ export function TripSheet({ open, trip, accent, onClose }) {
           padding: '8px 20px 24px',
           display: 'flex', flexDirection: 'column', gap: 16,
         }}>
-          <Photo src={trip.photo} alt={trip.place}/>
+          <Photo src={t.photo} alt={t.place}/>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <div style={{
               fontFamily: SERIF, fontSize: 30, lineHeight: 1.1,
               color: '#1a1a1a', letterSpacing: 0.2,
-            }}>{trip.place}</div>
+            }}>{t.place}</div>
             <div style={{
               fontSize: 11, color: '#9a958d', letterSpacing: 1.4,
               textTransform: 'uppercase', fontWeight: 500,
             }}>{dateLabel}</div>
           </div>
 
-          {trip.note && (
+          {t.note && (
             <div style={{
               fontFamily: SERIF, fontSize: 16, lineHeight: 1.45,
               fontStyle: 'italic', color: '#5a554c', letterSpacing: 0.1,
-            }}>{trip.note}</div>
+            }}>{t.note}</div>
           )}
 
           <button

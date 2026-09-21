@@ -73,6 +73,19 @@ export function tripDateLabel(trip) {
   return MONTHS_SHORT[m] + ' ' + d + ' · ' + y;
 }
 
+// A trip belongs to its month and day in EVERY year, not just the one it
+// happened in. 21 September is Napoli whichever year the calendar is showing -
+// which is the same rule the status bar clock follows, since 9:21 carries no
+// year either.
+//
+// Two trips on the same month and day would collide; the first in the list
+// wins, deliberately, so the calendar never changes its mind between taps.
+export function tripForDate(iso, trips = TRIPS) {
+  if (typeof iso !== 'string' || !ISO.test(iso)) return null;
+  const key = iso.slice(5);   // 'MM-DD'
+  return (trips || []).find((t) => isShowable(t) && t.date.slice(5) === key) || null;
+}
+
 // The look of something that can be tapped but must not admit it: no pointer
 // cursor, no selection, no tap highlight. Deliberately sets no colour, size or
 // weight - everything visible is inherited, so the text reads exactly as it
