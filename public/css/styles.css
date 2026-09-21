@@ -192,6 +192,17 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
+
+  /* Entry text is italic, and an emoji comes from the system emoji font, which
+     has no italic face - so the browser fakes one by skewing it, and a camel
+     leans over. Listing only 'weight' here leaves weight synthesis on and
+     turns style synthesis off, document-wide and inherited, so emoji stand
+     upright everywhere. No real italic is lost: every italic in the app is the
+     serif stack, and each family in it ships an italic face (Instrument Serif
+     latin + latin-ext, EB Garamond greek, Georgia as the system fallback).
+     An italic in the SANS stack would now render upright - that is deliberate;
+     Instrument Sans has no italic either, and a skewed one is not the fix. */
+  font-synthesis: weight;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
