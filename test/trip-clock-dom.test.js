@@ -21,7 +21,7 @@ import React from 'react';
 import { setupDom, stubFetch, render, click, pressKey, settle, act } from './helpers/dom.js';
 import { App } from '../src/Shell.jsx';
 import { TODAY_ISO } from '../src/data.js';
-import { SHOWN_TRIP, SHOWN_CLOCK, tripDateLabel } from '../src/trips.js';
+import { SHOWN_TRIP, SHOWN_CLOCK, tripDateLabel, photoFor, photosOf } from '../src/trips.js';
 
 const same = (a, b, message) => assert.ok(a === b, message);
 const absent = (value, message) => assert.ok(value === null || value === undefined, message);
@@ -135,7 +135,7 @@ test('clicking the clock opens the trip, with its place, date and photo', async 
     assert.ok(sheet.textContent.includes(SHOWN_TRIP.place), 'the place is shown');
     assert.ok(sheet.textContent.includes(tripDateLabel(SHOWN_TRIP)),
       'and the date the clock was hiding');
-    assert.equal(ui.photo().getAttribute('src'), SHOWN_TRIP.photo);
+    assert.equal(ui.photo().getAttribute('src'), photoFor(SHOWN_TRIP));
 
     same(ui.active(), ui.closeBtn(), 'Close holds focus');
   } finally { await ui.done(); }
@@ -276,5 +276,25 @@ test('a photo too tall for the sheet is trimmed rather than allowed to take over
     // passed through untouched, so the clamp is not just pinning everything.
     await ui.loadPhotoAs(1000, 500);
     assert.equal(ui.photoFrame().style.aspectRatio, '2 / 1');
+  } finally { await ui.done(); }
+});
+
+test('the photo is one of that trip s own, and does not change under an open sheet', async () => {
+  const ui = await mount();
+  try {
+    await click(ui.clock());
+    const src = ui.photo().getAttribute('src');
+    assert.ok(photosOf(SHOWN_TRIP).includes(src), src + ' must belong to ' + SHOWN_TRIP.place);
+
+    // Re-rendering the sheet must not reshuffle it - a photo swapping itself
+    // while someone is looking at it is the bug the memo exists to stop.
+    await pressKey('Tab');
+    assert.equal(ui.photo().getAttribute('src'), src, 'unchanged across a re-render');
+
+    // And still the same after closing and opening again in the same session.
+    await click(ui.closeBtn());
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    await click(ui.clock());
+    assert.equal(ui.photo().getAttribute('src'), src, 'unchanged across a reopen');
   } finally { await ui.done(); }
 });

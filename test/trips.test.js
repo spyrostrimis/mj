@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import {
   TRIPS, FALLBACK_CLOCK, SILENT_TAP,
   isShowable, clockFor, tripDateLabel, pickTrip, tripForDate,
+  photosOf, pickPhoto, photoFor,
 } from '../src/trips.js';
 import { photoRatio, DEFAULT_RATIO } from '../src/TripSheet.jsx';
 
@@ -163,4 +164,53 @@ test('a photo with nothing to measure keeps the frame it always had', () => {
 
   // Positive control: a real measurement does move it off the default.
   assert.notEqual(photoRatio(600, 800), DEFAULT_RATIO);
+});
+
+test('a trip s photos are collected however they were written', () => {
+  assert.deepEqual(photosOf({ photos: ['/a.webp', '/b.webp'] }), ['/a.webp', '/b.webp']);
+  assert.deepEqual(photosOf({ photo: '/one.webp' }), ['/one.webp'], 'the singular shorthand');
+  assert.deepEqual(photosOf({ photos: ['/a.webp'], photo: '/b.webp' }), ['/a.webp'],
+    'photos wins, so a leftover photo cannot resurrect itself');
+
+  // Nothing empty ever reaches an <img> as a src.
+  assert.deepEqual(photosOf({ photos: ['/a.webp', '', '   ', null, 7] }), ['/a.webp']);
+  assert.deepEqual(photosOf({ photos: [] }), []);
+  assert.deepEqual(photosOf({ photo: '' }), []);
+  assert.deepEqual(photosOf({}), []);
+  assert.deepEqual(photosOf(null), []);
+});
+
+test('pickPhoto reaches every photo and never falls off the end', () => {
+  const trip = { photos: ['/a.webp', '/b.webp', '/c.webp'] };
+  assert.equal(pickPhoto(trip, () => 0), '/a.webp');
+  assert.equal(pickPhoto(trip, () => 0.5), '/b.webp');
+  assert.equal(pickPhoto(trip, () => 0.999), '/c.webp');
+  assert.equal(pickPhoto(trip, () => 1), '/c.webp', 'an exact 1 must not index past the end');
+  assert.equal(pickPhoto({ photos: [] }), null, 'a trip with no photo has none');
+});
+
+test('a trip keeps the same photo for the whole page load', () => {
+  // The pick runs on every render otherwise, and the photo would change under
+  // a sheet that is already open.
+  const trip = { photos: ['/a.webp', '/b.webp', '/c.webp'] };
+  const first = photoFor(trip);
+  for (let i = 0; i < 50; i++) assert.equal(photoFor(trip), first, 'held for the session');
+  assert.ok(['/a.webp', '/b.webp', '/c.webp'].includes(first), 'and it is one of its own');
+
+  // Positive control: a different trip gets its own pick, so the memo is keyed
+  // per trip and not one value shared by all of them.
+  assert.equal(photoFor({ photos: ['/only.webp'] }), '/only.webp');
+  assert.equal(photoFor(null), null);
+  assert.equal(photoFor({ photos: [] }), null);
+});
+
+test('every photo of a shipped trip is reachable', () => {
+  // Over many loads each photo comes up; this walks the same distribution
+  // deterministically rather than trusting Math.random to cover it.
+  const napoli = TRIPS.find((t) => photosOf(t).length > 1);
+  assert.ok(napoli, 'the shipped list still demonstrates a multi-photo trip');
+  const seen = new Set();
+  for (let i = 0; i < 300; i++) seen.add(pickPhoto(napoli, () => i / 300));
+  assert.deepEqual([...seen].sort(), [...photosOf(napoli)].sort(),
+    'every photo is reachable and nothing outside the list is');
 });

@@ -21,7 +21,10 @@ export const FALLBACK_CLOCK = '9:41';
 //
 //   date  - 'YYYY-MM-DD', the day of the trip. This is what becomes the clock.
 //   place - shown large in the sheet.
-//   photo - a path under public/, e.g. '/trips/napoli.jpg'. Optional.
+//   photos - a list of paths under public/, e.g. ['/trips/napoli-1.webp'].
+//            One is chosen per page load, so a trip with several reshuffles
+//            on refresh exactly as the clock does. Optional.
+//   photo  - shorthand for a trip with only one. Optional. `photos` wins.
 //   note  - one quiet line under the date. Optional.
 //
 // TEST FAKE placeholders until the real ones arrive.
@@ -29,7 +32,13 @@ export const TRIPS = [
   {
     date:  '2026-09-21',
     place: 'Napoli',
-    photo: '/trips/placeholder-1.svg',
+    // Several, to show the shuffle - and all three shapes, so the sheet's
+    // aspect handling is exercised by the placeholders themselves.
+    photos: [
+      '/trips/placeholder-1.svg',
+      '/trips/placeholder-2.svg',
+      '/trips/placeholder-3.svg',
+    ],
     note:  'TEST FAKE - the one with the rain and the pizza.',
   },
   {
@@ -103,6 +112,38 @@ export function pickTrip(trips = TRIPS, random = Math.random) {
   const i = Math.floor(random() * showable.length);
   // A random() of exactly 1 is out of contract but costs nothing to survive.
   return showable[Math.min(i, showable.length - 1)];
+}
+
+// Every photo a trip has, in one shape, whichever way it was written. Blanks
+// and non-strings are dropped rather than handed to an <img> as a src.
+export function photosOf(trip) {
+  const list = Array.isArray(trip?.photos)
+    ? trip.photos
+    : (trip?.photo ? [trip.photo] : []);
+  return list.filter((p) => typeof p === 'string' && p.trim());
+}
+
+// `random` is injectable so a test can pin the choice; production passes none.
+export function pickPhoto(trip, random = Math.random) {
+  const list = photosOf(trip);
+  if (list.length === 0) return null;
+  return list[Math.min(Math.floor(random() * list.length), list.length - 1)];
+}
+
+// One photo per trip, chosen the first time that trip is asked for and then
+// held for the life of the page - the same lifetime as the clock's own choice.
+// So a refresh reshuffles every trip, while opening the same trip twice in one
+// session shows the same photo both times. Keyed on the trip object, so a
+// fixture that is not from TRIPS is just as stable.
+//
+// Without the memo the pick would run on every render and the photo would
+// change under a sheet that is already open.
+const CHOSEN_PHOTO = new WeakMap();
+
+export function photoFor(trip) {
+  if (!trip) return null;
+  if (!CHOSEN_PHOTO.has(trip)) CHOSEN_PHOTO.set(trip, pickPhoto(trip));
+  return CHOSEN_PHOTO.get(trip);
 }
 
 // Chosen once, when the bundle loads - the same lifetime as TODAY_ISO in

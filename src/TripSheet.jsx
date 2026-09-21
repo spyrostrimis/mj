@@ -11,7 +11,7 @@
 // and out of the tab order while it does.
 
 import { useState, useEffect, useRef } from 'react';
-import { tripDateLabel } from './trips.js';
+import { tripDateLabel, photoFor } from './trips.js';
 
 // Long enough to cover the .28s slide, short enough that nothing lingers.
 const EXIT_MS = 320;
@@ -172,7 +172,7 @@ export function TripSheet({ open, trip, accent, onClose }) {
           padding: '8px 20px 24px',
           display: 'flex', flexDirection: 'column', gap: 16,
         }}>
-          <Photo src={t.photo} alt={t.place}/>
+          <Photo src={photoFor(t)} alt={t.place}/>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <div style={{
