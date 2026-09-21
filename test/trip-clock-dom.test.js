@@ -137,7 +137,11 @@ test('clicking the clock opens the trip, with its place, date and photo', async 
       'and the date the clock was hiding');
     assert.equal(ui.photo().getAttribute('src'), photoFor(SHOWN_TRIP));
 
-    same(ui.active(), ui.closeBtn(), 'Close holds focus');
+    // The panel takes focus, not Close - a ring around the button the instant
+    // the sheet opens makes the thing you are meant to ignore the loudest
+    // thing on screen.
+    same(ui.active(), sheet, 'the panel holds focus');
+    assert.equal(sheet.style.outline, 'none', 'and shows nothing for it');
   } finally { await ui.done(); }
 });
 
@@ -182,16 +186,23 @@ test('the sheet slides out before it leaves the DOM, inert while it does', async
   } finally { await ui.done(); }
 });
 
-test('Tab cannot walk out of the trip sheet', async () => {
+test('Tab reaches Close and then cannot walk out', async () => {
   const ui = await mount();
   try {
     await click(ui.clock());
     const close = ui.closeBtn();
-    same(ui.active(), close, 'starts on Close');
+
+    // Nothing is highlighted to begin with...
+    assert.ok(ui.active() !== close, 'Close does not start focused');
+
+    // ...but a keyboard user gets there on the first Tab, and that is the
+    // moment a focus ring is worth drawing.
     await pressKey('Tab');
-    same(ui.active(), close, 'and stays there');
+    same(ui.active(), close, 'Tab lands on Close');
+    await pressKey('Tab');
+    same(ui.active(), close, 'and stays inside the sheet');
     await pressKey('Tab', { shiftKey: true });
-    same(ui.active(), close);
+    same(ui.active(), close, 'backwards too');
   } finally { await ui.done(); }
 });
 

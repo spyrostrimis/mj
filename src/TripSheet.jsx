@@ -71,6 +71,7 @@ export function TripSheet({ open, trip, accent, onClose }) {
   const [showing, setShowing] = useState(false);
   const [entered, setEntered] = useState(false);
   const closeRef = useRef(null);
+  const panelRef = useRef(null);
 
   // The status bar clock always hands over the same trip, but the calendar
   // hands over a different one each time and clears it on close - and a panel
@@ -106,14 +107,31 @@ export function TripSheet({ open, trip, accent, onClose }) {
     return () => clearTimeout(id);
   }, [open, showing]);
 
-  useEffect(() => { if (entered) takeFocus(closeRef.current); }, [entered]);
+  // Focus goes to the panel, not to Close.
+  //
+  // A dialog has to take focus - otherwise Escape and Tab have nothing to act
+  // on and a screen reader never announces it. But putting it on Close drew a
+  // focus ring around the button the moment the sheet opened, which made the
+  // one thing you are supposed to ignore the loudest thing on screen.
+  //
+  // The panel is a container rather than a control, so a ring on it would mean
+  // nothing anyway; it carries tabIndex={-1} to be focusable and outline:none
+  // to stay quiet. This is the pattern the ARIA dialog practice describes. A
+  // keyboard user presses Tab, lands on Close, and gets a real ring then -
+  // which is the moment it is actually useful.
+  useEffect(() => { if (entered) takeFocus(panelRef.current); }, [entered]);
 
   // Nothing to hand focus back to: the opener is a bare span, unfocusable on
   // purpose, because a focus ring is exactly the kind of tell that would give
   // the clock away. So focus is dropped instead of restored.
   const close = () => {
     onClose();
-    if (closeRef.current === document.activeElement) closeRef.current?.blur?.();
+    // Nothing to hand focus back to: the clock and the calendar wink are both
+    // bare spans, unfocusable on purpose, because a focus ring is exactly the
+    // tell that would give them away. So focus is dropped rather than restored,
+    // and dropped from wherever in the sheet it happens to be.
+    const active = document.activeElement;
+    if (active && panelRef.current?.contains(active)) active.blur?.();
   };
 
   useEffect(() => {
@@ -146,12 +164,15 @@ export function TripSheet({ open, trip, accent, onClose }) {
         }}/>
 
       <div
+        ref={panelRef}
         data-trip-sheet
+        tabIndex={-1}
         role={open ? 'dialog' : undefined}
         aria-modal={open ? 'true' : undefined}
         aria-hidden={open ? undefined : 'true'}
         aria-label={open ? t.place + ', ' + dateLabel : undefined}
         style={{
+          outline: 'none',
           pointerEvents: open ? 'auto' : 'none',
           position: 'absolute', left: 0, right: 0, bottom: 0,
           maxHeight: '88%',
