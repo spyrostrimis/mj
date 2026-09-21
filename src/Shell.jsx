@@ -9,6 +9,8 @@ import { CalendarScreen } from './Calendar.jsx';
 import { QuickSheet } from './Sheet.jsx';
 import { HalfSheet } from './HalfSheet.jsx';
 import { LockScreen } from './Lock.jsx';
+import { TripSheet } from './TripSheet.jsx';
+import { SHOWN_TRIP, SHOWN_CLOCK, SILENT_TAP } from './trips.js';
 import { UnavailableScreen } from './Unavailable.jsx';
 import { loadFailure, removeHalf, restoreHalf, deleteFailure } from './data.js';
 import * as api from './api.js';
@@ -17,6 +19,27 @@ const ACCENT   = '#8a6e4e';
 const APP_W    = 402;
 const APP_H    = 874;
 const FRAME_BP = 720;
+
+// The status bar clock, which is secretly a date.
+//
+// Everything here is about giving nothing away. It is a span, not a button, so
+// there is no tab stop, no focus ring and nothing for a screen reader to
+// announce; the cursor is pinned to default because a pointer is the loudest
+// tell there is; there is no title attribute, so no tooltip; no hover, no
+// colour change, no transition. It looks exactly like the 9:41 it replaced,
+// and the only thing that happens on hover is nothing.
+//
+// The status bar row itself is pointerEvents:'none' - this is the one span
+// that opts back in, so the rest of the bar stays inert.
+function StatusClock({ onOpen }) {
+  if (!SHOWN_TRIP) return <span>{SHOWN_CLOCK}</span>;
+  return (
+    <span
+      data-clock
+      onClick={onOpen}
+      style={{ pointerEvents: 'auto', ...SILENT_TAP }}>{SHOWN_CLOCK}</span>
+  );
+}
 
 function BottomTabs({ active, onChange, accent }) {
   const tabs = [
@@ -86,6 +109,9 @@ function useViewport() {
 // Above that it sits inside a scaled iOS frame, preserving the journal feel.
 function PhoneFrame({ children }) {
   const { w, h } = useViewport();
+  // Owned here rather than in App: the clock is part of the frame, and the
+  // full-bleed phone layout has no status bar to hide anything in.
+  const [trip, setTrip] = useState(false);
 
   if (w < FRAME_BP) {
     return (
@@ -137,13 +163,18 @@ function PhoneFrame({ children }) {
               fontFamily: '-apple-system, "SF Pro", system-ui, sans-serif',
               zIndex: 40, pointerEvents: 'none',
             }}>
-              <span>9:41</span>
+              <StatusClock onOpen={() => setTrip(true)}/>
               <span style={{ width: 100 }}/>
               <span style={{ fontSize: 11, opacity: 0.75, letterSpacing: 0.4 }}>5G {'▮▮▮'}</span>
             </div>
             <div style={{ position: 'absolute', top: 44, left: 0, right: 0, bottom: 0 }}>
               {children}
             </div>
+            <TripSheet
+              open={trip}
+              trip={SHOWN_TRIP}
+              accent={ACCENT}
+              onClose={() => setTrip(false)}/>
             <div style={{
               position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
               width: 134, height: 5, borderRadius: 100,
