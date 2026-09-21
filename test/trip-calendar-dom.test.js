@@ -296,3 +296,39 @@ test('the calendar carries the secret on desktop too', async () => {
       'and the clock is still up there, untouched');
   } finally { await ui.done(); }
 });
+
+test('the clock cannot stack a second trip on one the calendar opened', async () => {
+  // The reported bug, at the width where both doors exist. The calendar's
+  // backdrop starts below the status bar, so the clock stayed tappable and a
+  // second trip slid in over the first.
+  const ui = await mount({ width: 1200, height: 1000 });
+  try {
+    await ui.openCalendar();
+    await ui.select(EMPTY_DAY);
+    await click(ui.hint());
+
+    const clock = ui.container.querySelector('[data-clock]');
+    assert.ok(clock, 'the clock is there to be tapped');
+    assert.equal(ui.sheets().length, 1, 'one trip open to begin with');
+    const first = ui.sheet().textContent;
+    assert.ok(first.includes(TRIP_EMPTY.place));
+
+    await click(clock);
+
+    assert.equal(ui.sheets().length, 1, 'still one - the clock must not stack another');
+    assert.equal(ui.container.querySelectorAll('[data-trip-backdrop]').length, 1,
+      'and not a second backdrop either');
+    assert.ok(ui.sheet().textContent.includes(TRIP_EMPTY.place),
+      'the trip that was already open is the one still showing');
+    assert.equal(clock.style.pointerEvents, 'none', 'a real tap cannot reach it');
+
+    // Positive control: close the calendar's trip and the clock works again,
+    // so the fix is inertness while something is open, not a dead clock.
+    await click(ui.closeBtn());
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    const live = ui.container.querySelector('[data-clock]');
+    assert.equal(live.style.pointerEvents, 'auto', 'live again once nothing is open');
+    await click(live);
+    assert.equal(ui.sheets().length, 1, 'and it opens its own trip');
+  } finally { await ui.done(); }
+});

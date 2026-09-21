@@ -31,13 +31,23 @@ const FRAME_BP = 720;
 //
 // The status bar row itself is pointerEvents:'none' - this is the one span
 // that opts back in, so the rest of the bar stays inert.
-function StatusClock({ onOpen }) {
+//
+// `inert` is what stops a second trip opening on top of the first. Every sheet
+// the app owns lives inside the container at top:44, so its backdrop begins
+// BELOW the status bar and never covers the clock - which left the clock live
+// under the composer, the half actions and a trip opened from the calendar.
+// Both halves are needed: pointerEvents stops a real tap, and dropping the
+// handler stops a dispatched click, which is what a test sends.
+function StatusClock({ onOpen, inert }) {
   if (!SHOWN_TRIP) return <span>{SHOWN_CLOCK}</span>;
   return (
     <span
       data-clock
-      onClick={onOpen}
-      style={{ pointerEvents: 'auto', ...SILENT_TAP }}>{SHOWN_CLOCK}</span>
+      onClick={inert ? undefined : onOpen}
+      style={{
+        pointerEvents: inert ? 'none' : 'auto',
+        ...SILENT_TAP,
+      }}>{SHOWN_CLOCK}</span>
   );
 }
 
@@ -107,7 +117,9 @@ function useViewport() {
 
 // Below 720px the app is full-bleed so it feels native on a phone.
 // Above that it sits inside a scaled iOS frame, preserving the journal feel.
-function PhoneFrame({ children }) {
+// `modal` says the app has something open over itself. The frame cannot see
+// that on its own - the app's sheets are inside children - so App tells it.
+function PhoneFrame({ children, modal }) {
   const { w, h } = useViewport();
   // Owned here rather than in App: the clock is part of the frame, and the
   // full-bleed phone layout has no status bar to hide anything in.
@@ -163,7 +175,9 @@ function PhoneFrame({ children }) {
               fontFamily: '-apple-system, "SF Pro", system-ui, sans-serif',
               zIndex: 40, pointerEvents: 'none',
             }}>
-              <StatusClock onOpen={() => setTrip(true)}/>
+              <StatusClock
+                inert={modal || trip}
+                onOpen={() => setTrip(true)}/>
               <span style={{ width: 100 }}/>
               <span style={{ fontSize: 11, opacity: 0.75, letterSpacing: 0.4 }}>5G {'▮▮▮'}</span>
             </div>
@@ -321,7 +335,10 @@ export function App() {
   }
 
   return (
-    <PhoneFrame>
+    // The status bar is outside every sheet the app opens, so the clock has to
+    // be told when one is up. Without it the clock stays tappable through a
+    // backdrop and opens a trip over whatever is already there.
+    <PhoneFrame modal={sheet || !!target || !!tripDay}>
       {screen}
 
       {loadError && (

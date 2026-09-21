@@ -66,6 +66,10 @@ async function mount({ width = 1200, height = 1000 } = {}) {
       });
     },
     fab: () => all('button').find((b) => b.getAttribute('aria-label') === 'Log a moment'),
+    half: () => q('.half-btn'),
+    dialogs: () => all('[role="dialog"]'),
+    composerCancel: () => [...ui.composer().querySelectorAll('button')]
+      .find((b) => b.textContent.trim() === 'Cancel'),
     // The wide frame wraps the whole app in a scale() transform, and that
     // wrapper contains the composer's text as well - so match the panel by the
     // transform that actually parks it, not by having one at all.
@@ -307,5 +311,43 @@ test('the photo is one of that trip s own, and does not change under an open she
     await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
     await click(ui.clock());
     assert.equal(ui.photo().getAttribute('src'), src, 'unchanged across a reopen');
+  } finally { await ui.done(); }
+});
+
+// The status bar sits at top:0 but every sheet the app owns lives inside the
+// container at top:44, so a backdrop begins BELOW the clock and never covers
+// it. That left the clock tappable through all of them - tap it with the
+// composer up and a trip slid in over the composer.
+test('the clock is inert while the composer is open', async () => {
+  const ui = await mount();
+  try {
+    await click(ui.fab());
+    assert.match(ui.composer().style.transform, /translateY\(0\)/, 'the composer is up');
+
+    await click(ui.clock());
+    absent(ui.sheet(), 'no trip may open over the composer');
+    assert.equal(ui.clock().style.pointerEvents, 'none', 'and a real tap cannot reach it');
+
+    // Positive control in the same run: with the composer closed the clock
+    // works exactly as before, so this is inertness and not a broken clock.
+    await pressKey('Escape');
+    await click(ui.composerCancel());
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    assert.equal(ui.clock().style.pointerEvents, 'auto', 'live again');
+    await click(ui.clock());
+    assert.ok(ui.sheet(), 'and it still opens its trip');
+  } finally { await ui.done(); }
+});
+
+test('the clock is inert while a half sheet is open', async () => {
+  const ui = await mount();
+  try {
+    await click(ui.half());
+    assert.ok(ui.dialogs().some((d) => d.textContent.includes('Delete')),
+      'the half actions are up');
+
+    await click(ui.clock());
+    absent(ui.sheet(), 'no trip may open over the half actions');
+    assert.equal(ui.clock().style.pointerEvents, 'none');
   } finally { await ui.done(); }
 });
