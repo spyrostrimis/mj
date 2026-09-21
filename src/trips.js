@@ -50,6 +50,13 @@ export const TRIPS = [
     ],
     note: 'Makrinitsa, Nafplio, Volos',
   },
+  {
+    date: '2026-07-24',
+    place: 'Avlakia - Samos',
+    photos: [
+      '/trips/avlakia-1.webp',
+    ]
+  }
 ];
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
