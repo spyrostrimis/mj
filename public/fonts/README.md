@@ -38,6 +38,13 @@ from the second, download the files they reference, and re-copy each
 `unicode-range` verbatim. The host names are deliberately left out of this
 file, so that grepping the repo for them keeps coming back empty.
 
+**Give a refreshed file a new name.** `public/_headers` pins `/fonts/*` for a
+year as immutable, so a browser that has the old file will not ask for it
+again - re-uploading under the same name ships the change to new visitors
+only. Add a suffix (`instrument-serif-latin-italic-2.woff2`), point the
+`@font-face` `src` in `public/css/styles.css` at it, and update the table
+above.
+
 ## License
 
 All four families are licensed under the SIL Open Font License 1.1. The

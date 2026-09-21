@@ -4,7 +4,7 @@
 // against a running server. What is worth holding here is the invariant that
 // keeps it correct as the app grows: every fixed-name asset the shell loads
 // must be told to revalidate, or a deploy silently fails to reach anyone who
-// has visited in the last four hours.
+// still holds a cached copy.
 //
 // Add a second script or stylesheet to index.html without covering it here and
 // this test says so.
@@ -88,15 +88,33 @@ test('every fixed-name asset the shell loads is told to revalidate', () => {
 
 test('the rules are narrow, not a blanket no-cache over everything', () => {
   // Positive control for the matcher: it has to be able to say no, or the
-  // test above passes for any file at all.
-  assert.equal(cacheControlFor('/fonts/instrument-serif-latin-normal.woff2'), undefined,
-    'fonts keep the default - they never change, and caching them is the point');
+  // test above passes for any file at all. Whatever has no rule here falls to
+  // Pages' own default, which is max-age=0, must-revalidate - a 304 per load,
+  // not the four hours this file once assumed.
   assert.equal(cacheControlFor('/trips/napoli.webp'), undefined,
-    'trip photos keep the default too');
+    'trip photos revalidate: they do get replaced under an existing filename');
   assert.equal(cacheControlFor('/index.html'), undefined,
     'the shell is already max-age=0 from Pages itself');
 
   // And it really does say yes to the ones that matter.
   assert.match(cacheControlFor('/assets/app.js'), /no-cache/);
   assert.match(cacheControlFor('/css/styles.css'), /no-cache/);
+});
+
+// The fonts are the one thing here that is cached rather than revalidated,
+// and the rule only pays off while the two halves of the bargain hold: a long
+// immutable TTL, and a filename that is never reused. The second half lives in
+// fonts/README.md, so this checks that the warning is still there to read.
+test('the fonts are pinned, and the filename rule that pays for it is written down', () => {
+  const cc = cacheControlFor('/fonts/instrument-serif-latin-normal.woff2');
+  assert.ok(cc, 'fonts need their own rule: without one Pages revalidates them every load');
+  assert.match(cc, /immutable/, 'a font should not be revalidated at all');
+  assert.match(cc, /max-age=(\d+)/);
+  assert.ok(Number(cc.match(/max-age=(\d+)/)[1]) >= 2592000,
+    'a short TTL gives up the point of pinning them - at least 30 days');
+
+  const readme = readFileSync('public/fonts/README.md', 'utf8');
+  assert.match(readme, /new name|new filename/i,
+    'fonts/README.md must say a refreshed font needs a new filename - ' +
+    'immutable means the old one is kept for the whole max-age');
 });

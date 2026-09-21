@@ -2,27 +2,39 @@
 #
 # The bundle and the stylesheet have fixed names - the build always writes
 # public/assets/app.js - so a browser holding a cached copy keeps running the
-# old app after a deploy. Pages' default for static assets is
+# old app after a deploy. `no-cache` keeps the copy but revalidates it before
+# every use. The ETag does the real work: an unchanged file answers 304 with
+# no body, so this costs one small conditional request per load rather than
+# re-downloading 186KB.
 #
-#   Cache-Control: public, max-age=14400, must-revalidate
+# What actually caused the four-hour staleness was not Pages. The zone in
+# front of mj.spyrostrimis.com had Browser Cache TTL set to 4 hours, and that
+# REWROTE the header below to max-age=14400 on the custom domain while
+# mj-4er.pages.dev served the no-cache this file asks for - same deployment,
+# two different headers, and the file looked like it was being ignored. The
+# setting is now "Respect Existing Headers" (changed 2026-09-21). If a deploy
+# ever seems to take hours to reach a browser again, check that before this
+# file, and compare the two hostnames to tell them apart.
 #
-# which meant a push could take up to four hours to reach anyone who had
-# visited before. must-revalidate does not help: it only applies once the copy
-# is already stale, not during those four hours. Measured on the live site
-# right after a deploy - the server had the new bundle in 30 seconds and the
-# browser went on running the old one.
+# Pages' own default for a static asset is `public, max-age=0, must-revalidate`
+# - not the four hours the zone was imposing. So anything without a rule here
+# is revalidated on every load.
 #
-# `no-cache` keeps the copy but revalidates it before every use. The ETag does
-# the real work: an unchanged file answers 304 with no body, so this costs one
-# small conditional request per load rather than re-downloading 186KB.
+# Fonts are the opposite case from the bundle: ten woff2 files that never
+# change under a given name, and the largest thing the app serves. They are
+# pinned for a year and never revalidated, which costs nothing per load and
+# makes one demand in return - a refreshed font MUST be given a new filename,
+# or browsers keep the old one for a year. See fonts/README.md.
 #
-# Fonts are deliberately left on the default. They are self-hosted, effectively
-# never change, and four hours of caching is a benefit there rather than a
-# hazard. Same for /trips/ photos - replacing one under its old filename is the
-# only way to be bitten, and that is rare enough to not be worth the request.
+# /trips/ photos are deliberately left revalidating. They can be replaced
+# under an existing filename, and they are looked at rarely, so a 304 per view
+# is the cheaper mistake.
 
 /assets/*
   Cache-Control: no-cache
 
 /css/*
   Cache-Control: no-cache
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
