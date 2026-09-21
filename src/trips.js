@@ -12,10 +12,10 @@
 // Nothing here touches the journal. No API, no database, no love languages -
 // these are hard-coded memories, not entries.
 
-import { MONTHS_SHORT, parseISO } from "./data.js";
+import { MONTHS_SHORT, parseISO } from './data.js';
 
 // What the frame shows when there is no trip to show: Apple's own stock time.
-export const FALLBACK_CLOCK = "9:41";
+export const FALLBACK_CLOCK = '9:41';
 
 // The trips. Add one line per trip; the clock set rebuilds itself.
 //
@@ -29,26 +29,26 @@ export const FALLBACK_CLOCK = "9:41";
 //
 export const TRIPS = [
   {
-    date: "2026-09-08",
-    place: "Napoli",
-    photos: ["/trips/napoli-1.webp"],
-    note: "What do you mean they have no soap?",
+    date: '2026-09-08',
+    place: 'Napoli',
+    photos: ['/trips/napoli-1.webp'],
+    note: 'What do you mean they have no soap?',
   },
   {
-    date: "2026-04-24",
-    place: "Nafplio",
-    photo: "/trips/nafplio-1.webp",
+    date: '2026-04-24',
+    place: 'Nafplio',
+    photo: '/trips/nafplio-1.webp',
   },
   {
-    date: "2026-01-22",
-    place: "Makrinitsa",
+    date: '2026-01-22',
+    place: 'Makrinitsa',
     photos: [
-      "/trips/makrinitsa-1.webp",
-      "/trips/makrinitsa-2.webp",
-      "/trips/makrinitsa-3.webp",
-      "/trips/makrinitsa-4.webp",
+      '/trips/makrinitsa-1.webp',
+      '/trips/makrinitsa-2.webp',
+      '/trips/makrinitsa-3.webp',
+      '/trips/makrinitsa-4.webp',
     ],
-    note: "Makrinitsa, Nafplio, Volos",
+    note: 'Makrinitsa, Nafplio, Volos',
   },
 ];
 
@@ -58,8 +58,7 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 // month would render 0:xx or 19:xx in a 12-hour bar and give the game away, so
 // it is dropped rather than shown.
 export function isShowable(trip) {
-  if (!trip || typeof trip.date !== "string" || !ISO.test(trip.date))
-    return false;
+  if (!trip || typeof trip.date !== 'string' || !ISO.test(trip.date)) return false;
   if (!trip.place || !String(trip.place).trim()) return false;
   const { m, d } = parseISO(trip.date);
   return m >= 0 && m <= 11 && d >= 1 && d <= 31;
@@ -70,14 +69,14 @@ export function isShowable(trip) {
 export function clockFor(trip) {
   if (!isShowable(trip)) return FALLBACK_CLOCK;
   const { m, d } = parseISO(trip.date);
-  return m + 1 + ":" + String(d).padStart(2, "0");
+  return (m + 1) + ':' + String(d).padStart(2, '0');
 }
 
 // The payoff line: the date the clock was hiding, spelled out.
 export function tripDateLabel(trip) {
-  if (!isShowable(trip)) return "";
+  if (!isShowable(trip)) return '';
   const { y, m, d } = parseISO(trip.date);
-  return MONTHS_SHORT[m] + " " + d + " · " + y;
+  return MONTHS_SHORT[m] + ' ' + d + ' · ' + y;
 }
 
 // A trip belongs to its month and day in EVERY year, not just the one it
@@ -88,11 +87,9 @@ export function tripDateLabel(trip) {
 // Two trips on the same month and day would collide; the first in the list
 // wins, deliberately, so the calendar never changes its mind between taps.
 export function tripForDate(iso, trips = TRIPS) {
-  if (typeof iso !== "string" || !ISO.test(iso)) return null;
-  const key = iso.slice(5); // 'MM-DD'
-  return (
-    (trips || []).find((t) => isShowable(t) && t.date.slice(5) === key) || null
-  );
+  if (typeof iso !== 'string' || !ISO.test(iso)) return null;
+  const key = iso.slice(5);   // 'MM-DD'
+  return (trips || []).find((t) => isShowable(t) && t.date.slice(5) === key) || null;
 }
 
 // The look of something that can be tapped but must not admit it: no pointer
@@ -100,10 +97,9 @@ export function tripForDate(iso, trips = TRIPS) {
 // weight - everything visible is inherited, so the text reads exactly as it
 // did before it became a door.
 export const SILENT_TAP = {
-  cursor: "default",
-  userSelect: "none",
-  WebkitUserSelect: "none",
-  WebkitTapHighlightColor: "transparent",
+  cursor: 'default',
+  userSelect: 'none', WebkitUserSelect: 'none',
+  WebkitTapHighlightColor: 'transparent',
 };
 
 // `random` is injectable so a test can pin the choice; production passes none.
@@ -120,10 +116,8 @@ export function pickTrip(trips = TRIPS, random = Math.random) {
 export function photosOf(trip) {
   const list = Array.isArray(trip?.photos)
     ? trip.photos
-    : trip?.photo
-      ? [trip.photo]
-      : [];
-  return list.filter((p) => typeof p === "string" && p.trim());
+    : (trip?.photo ? [trip.photo] : []);
+  return list.filter((p) => typeof p === 'string' && p.trim());
 }
 
 // `random` is injectable so a test can pin the choice; production passes none.
@@ -153,5 +147,5 @@ export function photoFor(trip) {
 // data.js. That is precisely the requirement: a new trip on every refresh,
 // and the same one all the way through a session, so moving between Today,
 // Calendar and Insights never reshuffles the clock.
-export const SHOWN_TRIP = pickTrip();
+export const SHOWN_TRIP  = pickTrip();
 export const SHOWN_CLOCK = SHOWN_TRIP ? clockFor(SHOWN_TRIP) : FALLBACK_CLOCK;
