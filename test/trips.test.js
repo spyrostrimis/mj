@@ -60,10 +60,18 @@ test('a date that would not pass for a time is dropped, not shown', () => {
   assert.equal(pickTrip(null), null);
 });
 
-test('the label spells out the date the clock was hiding', () => {
-  assert.equal(tripDateLabel(trip('2026-09-21')), 'Sep 21 · 2026');
-  assert.equal(tripDateLabel(trip('2025-01-05')), 'Jan 5 · 2025');
-  assert.equal(tripDateLabel(trip('2026-13-01')), '', 'nothing to spell out');
+test('the label under the place is the month and the year', () => {
+  assert.equal(tripDateLabel(trip('2026-09-21')), 'September 2026');
+  assert.equal(tripDateLabel(trip('2025-01-05')), 'January 2025');
+  assert.equal(tripDateLabel(trip('2026-12-31')), 'December 2026');
+
+  // No day: the sheet already sits on the date that opened it, and the clock
+  // is that date too.
+  for (const iso of ['2026-09-01', '2026-09-15', '2026-09-30']) {
+    assert.equal(tripDateLabel(trip(iso)), 'September 2026', iso + ' drops the day');
+  }
+
+  assert.equal(tripDateLabel(trip('2026-13-01')), '', 'nothing to label');
 });
 
 test('pickTrip reaches every trip and never falls off the end', () => {

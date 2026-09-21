@@ -12,7 +12,7 @@
 // Nothing here touches the journal. No API, no database, no love languages -
 // these are hard-coded memories, not entries.
 
-import { MONTHS_SHORT, parseISO } from './data.js';
+import { MONTHS_LONG, parseISO } from './data.js';
 
 // What the frame shows when there is no trip to show: Apple's own stock time.
 export const FALLBACK_CLOCK = '9:41';
@@ -72,11 +72,15 @@ export function clockFor(trip) {
   return (m + 1) + ':' + String(d).padStart(2, '0');
 }
 
-// The payoff line: the date the clock was hiding, spelled out.
+// The month and year under the place, rendered uppercase by the sheet.
+//
+// Deliberately no day. The exact date is already the clock and the calendar
+// square it was found on, so spelling it out a third time here made the sheet
+// read like a receipt rather than a memory.
 export function tripDateLabel(trip) {
   if (!isShowable(trip)) return '';
-  const { y, m, d } = parseISO(trip.date);
-  return MONTHS_SHORT[m] + ' ' + d + ' · ' + y;
+  const { y, m } = parseISO(trip.date);
+  return MONTHS_LONG[m] + ' ' + y;
 }
 
 // A trip belongs to its month and day in EVERY year, not just the one it
