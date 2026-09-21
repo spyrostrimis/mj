@@ -11,9 +11,6 @@ all the way through a session:
 { date: '2026-05-08', place: 'Lisboa', photo:  '/trips/lisboa.webp' }
 ```
 
-The three `placeholder-*.svg` files are TEST FAKE stand-ins and carry no real
-content. Delete them once the real photos are in.
-
 ## Before adding real photos
 
 These files are committed to the git repo and served by the public app shell,
