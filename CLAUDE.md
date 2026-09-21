@@ -48,6 +48,11 @@ PROJECT: Monkey Journal, a private love-language journal for two people: Turtle 
 .claude/
   launch.json              Preview dev-server config: npm run dev on port 8788
                            (worktrees/ and settings.local.json are gitignored)
+.vscode/
+  settings.json            Formatting OFF for this folder. The machine's user
+                           settings run Prettier on save, which rewrites this
+                           hand-aligned code (and requoted trips.js once).
+                           Tracked on purpose so it applies to any clone.
 .gitattributes             * text=auto eol=lf (LF everywhere; overrides core.autocrlf)
 .gitignore                 node_modules/, public/assets/, .wrangler/, .dev.vars, .env,
                            .DS_Store, *.zip, *.sql (migrations/*.sql re-included),

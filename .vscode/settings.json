@@ -1,0 +1,36 @@
+{
+  // Formatting is OFF for this repo, on purpose.
+  //
+  // The user-level VS Code settings on this machine set editor.formatOnSave
+  // with esbenp.prettier-vscode as the default formatter. With no Prettier
+  // config anywhere, Prettier falls back to its defaults - double quotes and
+  // an 80-column rewrap - and rewrites whatever file is being saved. That is
+  // what turned src/trips.js into the only double-quoted file in src/, and it
+  // buried the real change under 73 lines of churn.
+  //
+  // A .prettierrc with singleQuote would not fix it. This codebase is hand
+  // aligned - 32 assignments in src/ line their `=` up in a column, like
+  //
+  //   const [view, setView]         = useState({ y: TODAY.y, m: TODAY.m });
+  //   const fut   = isFuture(iso);
+  //
+  // and Prettier collapses every one of them. No option preserves that, so
+  // the choice is formatting or this style, not which formatting.
+  //
+  // Workspace settings win over user settings, so this only affects this
+  // folder. Everything else you open in VS Code still formats on save.
+  //
+  // Manual formatting (Shift+Alt+F) is still available if you ever want it on
+  // a specific file - this only stops it happening to you unasked.
+  "editor.formatOnSave": false,
+  "editor.formatOnPaste": false,
+  "editor.formatOnType": false,
+
+  // Belt and braces: disables the Prettier extension for this workspace, so a
+  // per-language formatOnSave elsewhere cannot reach in and re-enable it.
+  "prettier.enable": false,
+
+  // The repo is LF everywhere via .gitattributes; match it so a save does not
+  // reintroduce CRLF on this Windows machine.
+  "files.eol": "\n"
+}
