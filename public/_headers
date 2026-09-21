@@ -1,0 +1,28 @@
+# Cloudflare Pages reads this file and does not serve it.
+#
+# The bundle and the stylesheet have fixed names - the build always writes
+# public/assets/app.js - so a browser holding a cached copy keeps running the
+# old app after a deploy. Pages' default for static assets is
+#
+#   Cache-Control: public, max-age=14400, must-revalidate
+#
+# which meant a push could take up to four hours to reach anyone who had
+# visited before. must-revalidate does not help: it only applies once the copy
+# is already stale, not during those four hours. Measured on the live site
+# right after a deploy - the server had the new bundle in 30 seconds and the
+# browser went on running the old one.
+#
+# `no-cache` keeps the copy but revalidates it before every use. The ETag does
+# the real work: an unchanged file answers 304 with no body, so this costs one
+# small conditional request per load rather than re-downloading 186KB.
+#
+# Fonts are deliberately left on the default. They are self-hosted, effectively
+# never change, and four hours of caching is a benefit there rather than a
+# hazard. Same for /trips/ photos - replacing one under its old filename is the
+# only way to be bitten, and that is rare enough to not be worth the request.
+
+/assets/*
+  Cache-Control: no-cache
+
+/css/*
+  Cache-Control: no-cache
