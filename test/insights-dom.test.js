@@ -107,3 +107,32 @@ test('a tab with nothing logged on its side shows no Pattern', async () => {
     await app.done();
   }
 });
+
+test('a tie is named as a split, not settled by list order', async () => {
+  const app = await mountInsights([
+    pair('p1', 'touch', 'acts'),
+    pair('p2', 'time', 'time'),
+    turtleOnly('t1', 'acts'),
+  ]);
+  try {
+    // Monkey: touch 1, time 1. Turtle: acts 2, time 1.
+    assert.match(app.pattern(), /Monkey splits between Touch and Time\./);
+    assert.match(app.pattern(), /You return it in Acts\./, 'no tie, no split');
+    await app.tab('Him');
+    assert.match(app.pattern(), /Monkey splits between Touch and Time\./);
+    await app.tab('Me');
+    assert.match(app.pattern(), /You lean into Acts\./, 'positive control');
+  } finally {
+    await app.done();
+  }
+});
+
+test('Me names its own tie as a split', async () => {
+  const app = await mountInsights([turtleOnly('t1', 'gifts'), turtleOnly('t2', 'words')]);
+  try {
+    await app.tab('Me');
+    assert.match(app.pattern(), /You split between Words and Gifts\./);
+  } finally {
+    await app.done();
+  }
+});

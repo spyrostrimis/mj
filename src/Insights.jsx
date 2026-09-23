@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { ScreenShell, ScreenScroll } from './layout.jsx';
 import { MonkeyTiny, TurtleTiny } from './mascots.jsx';
-import { LANGS, LANG_BY_KEY, computeStats, topLang } from './data.js';
+import { LANGS, computeStats, topLangs, listLangs } from './data.js';
 
 function Segmented({ value, onChange, options, accent }) {
   return (
@@ -95,12 +95,12 @@ export function InsightsScreen({ entries, accent }) {
   const stats = computeStats(entries);
   const total = stats.momentCount;
   const halves = stats.monkeyTotal + stats.turtleTotal;
-  const mTop  = topLang(stats.monkey);
-  const tTop  = topLang(stats.turtle);
+  const mTop  = topLangs(stats.monkey);
+  const tTop  = topLangs(stats.turtle);
 
   // Him and Me each speak for one side only; Both reads the two together.
-  const showM = view !== 'me'  && mTop;
-  const showT = view !== 'him' && tTop;
+  const showM = view !== 'me'  && mTop.length > 0;
+  const showT = view !== 'him' && tTop.length > 0;
 
   const sorted = [...LANGS].sort((a, b) => {
     if (view === 'him') return stats.monkey[b.key] - stats.monkey[a.key];
@@ -166,11 +166,13 @@ export function InsightsScreen({ entries, accent }) {
                 {/* Each line only appears once that side has something logged,
                     so the journal never claims a lean it has not seen. */}
                 {showM && (
-                  <>Monkey leans into <span style={{ color: accent }}>{LANG_BY_KEY[mTop].label}</span>.</>
+                  <>Monkey {mTop.length > 1 ? 'splits between' : 'leans into'} <span style={{ color: accent }}>{listLangs(mTop)}</span>.</>
                 )}
                 {showM && showT && <br/>}
                 {showT && (
-                  <>{view === 'me' ? 'You lean into' : 'You return it in'} <span style={{ color: accent }}>{LANG_BY_KEY[tTop].label}</span>.</>
+                  <>{view === 'me'
+                      ? (tTop.length > 1 ? 'You split between' : 'You lean into')
+                      : 'You return it in'} <span style={{ color: accent }}>{listLangs(tTop)}</span>.</>
                 )}
               </div>
             </div>

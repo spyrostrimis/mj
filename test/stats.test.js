@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeStats, topLang } from '../src/data.js';
+import { computeStats, topLangs, listLangs } from '../src/data.js';
 
 const pair = (id, mLang, tLang) => ({
   id, pairId: id, date: '2026-01-01', time: '09:00',
@@ -68,17 +68,33 @@ test('an empty journal has no totals', () => {
   assert.equal(stats.turtleTotal, 0);
 });
 
-test('topLang returns null rather than inventing a favourite', () => {
+test('topLangs returns nothing rather than inventing a favourite', () => {
   const nothing = computeStats([turtleOnly('c', 'words')]);
-  assert.equal(topLang(nothing.monkey), null, 'Monkey has logged nothing');
-  assert.equal(topLang(nothing.turtle), 'words', 'positive control');
+  assert.deepEqual(topLangs(nothing.monkey), [], 'Monkey has logged nothing');
+  assert.deepEqual(topLangs(nothing.turtle), ['words'], 'positive control');
 });
 
-test('topLang picks the highest count', () => {
+test('topLangs picks the highest count', () => {
   const stats = computeStats([
     monkeyOnly('a', 'touch'), monkeyOnly('b', 'touch'), monkeyOnly('c', 'gifts'),
   ]);
-  assert.equal(topLang(stats.monkey), 'touch');
+  assert.deepEqual(topLangs(stats.monkey), ['touch']);
+});
+
+test('topLangs reports a tie as a tie, in LANGS order', () => {
+  // Touch is logged first, so a first-seen winner would be touch alone.
+  const stats = computeStats([
+    monkeyOnly('a', 'touch'), monkeyOnly('b', 'words'), monkeyOnly('c', 'gifts'),
+    monkeyOnly('d', 'touch'), monkeyOnly('e', 'words'),
+  ]);
+  assert.deepEqual(topLangs(stats.monkey), ['words', 'touch']);
+});
+
+test('listLangs reads like a sentence', () => {
+  assert.equal(listLangs([]), '');
+  assert.equal(listLangs(['time']), 'Time');
+  assert.equal(listLangs(['words', 'time']), 'Words and Time');
+  assert.equal(listLangs(['words', 'acts', 'time']), 'Words, Acts and Time');
 });
 
 test('unknown languages on an entry are ignored', () => {

@@ -252,14 +252,22 @@ export function computeStats(entries) {
   return { monkey, turtle, monkeyTotal, turtleTotal, momentCount: entries.length };
 }
 
-// Returns null when this subject has nothing logged - seeding at -1 used to
-// hand back the first language and claim a lean that was never recorded.
-export function topLang(counts) {
-  let best = null, bestN = 0;
-  for (const [k, n] of Object.entries(counts)) {
-    if (n > bestN) { bestN = n; best = k; }
-  }
-  return best;
+// Every language tied for the highest count, in LANGS order. Empty when this
+// subject has nothing logged - seeding at -1 once handed back the first
+// language and claimed a lean that was never recorded. A tie is returned as a
+// tie; picking one would claim a favourite the journal has not seen.
+export function topLangs(counts) {
+  let bestN = 0;
+  for (const n of Object.values(counts)) if (n > bestN) bestN = n;
+  if (bestN === 0) return [];
+  return LANGS.map(l => l.key).filter(k => counts[k] === bestN);
+}
+
+// "Time", "Time and Touch", "Words, Time and Touch".
+export function listLangs(keys) {
+  const labels = keys.map(k => LANG_BY_KEY[k].label);
+  if (labels.length <= 1) return labels.join('');
+  return labels.slice(0, -1).join(', ') + ' and ' + labels[labels.length - 1];
 }
 
 // Where the shell should go when loading the journal fails. A 401 is the
