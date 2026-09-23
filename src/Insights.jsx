@@ -1,10 +1,10 @@
-// Insights - hairline bars per love language, across all time.
+// Insights - hairline bars per love language over a chosen period.
 // Segmented control switches between Him / Me / Both.
 
 import { useState } from 'react';
 import { ScreenShell, ScreenScroll } from './layout.jsx';
 import { MonkeyTiny, TurtleTiny } from './mascots.jsx';
-import { LANGS, computeStats, topLangs, listLangs } from './data.js';
+import { LANGS, PERIODS, computeStats, topLangs, listLangs, inPeriod } from './data.js';
 
 function Segmented({ value, onChange, options, accent }) {
   return (
@@ -31,6 +31,34 @@ function Segmented({ value, onChange, options, accent }) {
               transition: 'all .15s ease',
               fontFamily: 'inherit',
             }}>{opt.label}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+// The period reads as a row of eyebrows: the chosen one in the accent, the
+// rest quiet. It sits where the fixed "All time" eyebrow used to.
+function PeriodPicker({ value, onChange, accent }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+      {PERIODS.map(p => {
+        const active = p.key === value;
+        return (
+          <button
+            key={p.key}
+            className="eyebrow"
+            aria-pressed={active}
+            onClick={() => onChange(p.key)}
+            style={{
+              border: 'none', background: 'transparent', padding: '4px 0',
+              cursor: 'pointer', fontFamily: 'inherit',
+              // Tighter than a plain eyebrow so all four fit one line on a
+              // 320px phone.
+              letterSpacing: 1, whiteSpace: 'nowrap',
+              color: active ? accent : '#b8b3aa',
+              transition: 'color .15s ease',
+            }}>{p.label}</button>
         );
       })}
     </div>
@@ -92,7 +120,9 @@ function PairedBarRow({ label, monkeyN, turtleN, monkeyTotal, turtleTotal, accen
 
 export function InsightsScreen({ entries, accent }) {
   const [view, setView] = useState('both');
-  const stats = computeStats(entries);
+  const [period, setPeriod] = useState('all');
+  const phrase = PERIODS.find(p => p.key === period).phrase;
+  const stats = computeStats(inPeriod(entries, period));
   const total = stats.momentCount;
   const halves = stats.monkeyTotal + stats.turtleTotal;
   const mTop  = topLangs(stats.monkey);
@@ -112,10 +142,10 @@ export function InsightsScreen({ entries, accent }) {
   return (
     <ScreenShell>
       <div style={{ padding: '18px 24px 16px' }}>
-        <div className="eyebrow">All time</div>
-        <h1 className="page-title" style={{ marginTop: 6 }}>Love, broken down.</h1>
-        <div style={{ fontSize: 13.5, color: '#9a958d', marginTop: 6 }}>
-          {total} {total === 1 ? 'moment' : 'moments'} logged.
+        <PeriodPicker value={period} onChange={setPeriod} accent={accent}/>
+        <h1 className="page-title" style={{ marginTop: 4 }}>Love, broken down.</h1>
+        <div data-count style={{ fontSize: 13.5, color: '#9a958d', marginTop: 6 }}>
+          {total} {total === 1 ? 'moment' : 'moments'} {period === 'all' ? 'logged' : phrase}.
         </div>
       </div>
 
@@ -136,7 +166,9 @@ export function InsightsScreen({ entries, accent }) {
               paddingTop: 16,
               fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
               fontSize: 17, color: '#b8b3aa', fontStyle: 'italic', lineHeight: 1.4,
-            }}>No moments logged yet.<br/>Start with Today.</div>
+            }}>{period === 'all'
+                  ? <>No moments logged yet.<br/>Start with Today.</>
+                  : <>Nothing logged {phrase} yet.</>}</div>
           ) : (
             sorted.map(l => {
               if (view === 'him') {

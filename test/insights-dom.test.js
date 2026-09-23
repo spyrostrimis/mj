@@ -136,3 +136,36 @@ test('Me names its own tie as a split', async () => {
     await app.done();
   }
 });
+
+test('the period narrows the count, the bars and the Pattern', async () => {
+  const app = await mountInsights([
+    pair('p1', 'time', 'acts'),
+    monkeyOnly('old1', 'gifts', '2000-01-01'),
+    monkeyOnly('old2', 'gifts', '2000-01-02'),
+  ]);
+  try {
+    assert.equal(app.text('[data-count]'), '3 moments logged.', 'positive control');
+    assert.match(app.pattern(), /Monkey leans into Gifts\./, 'positive control');
+
+    await app.tab('This week');
+    assert.equal(app.text('[data-count]'), '1 moment this week.');
+    assert.match(app.pattern(), /Monkey leans into Time\./);
+    assert.equal(app.button('This week').getAttribute('aria-pressed'), 'true');
+    assert.equal(app.button('All time').getAttribute('aria-pressed'), 'false');
+  } finally {
+    await app.done();
+  }
+});
+
+test('an empty period says so and claims no Pattern', async () => {
+  const app = await mountInsights([monkeyOnly('old1', 'gifts', '2000-01-01')]);
+  try {
+    assert.ok(app.pattern(), 'positive control: all time has a Pattern');
+    await app.tab('This year');
+    assert.equal(app.text('[data-count]'), '0 moments this year.');
+    assert.match(app.container.textContent, /Nothing logged this year yet\./);
+    assert.equal(app.pattern(), null);
+  } finally {
+    await app.done();
+  }
+});

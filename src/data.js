@@ -270,6 +270,29 @@ export function listLangs(keys) {
   return labels.slice(0, -1).join(', ') + ' and ' + labels[labels.length - 1];
 }
 
+// The windows Insights can be read over. A week starts on Sunday, the same
+// first column the Calendar grid uses.
+export const PERIODS = [
+  { key: 'week',  label: 'This week',  phrase: 'this week' },
+  { key: 'month', label: 'This month', phrase: 'this month' },
+  { key: 'year',  label: 'This year',  phrase: 'this year' },
+  { key: 'all',   label: 'All time',   phrase: 'all time' },
+];
+
+// First day of the period that contains todayISO, or null for all time.
+export function periodStart(period, todayISO = TODAY_ISO) {
+  const { y, m, d } = parseISO(todayISO);
+  if (period === 'week')  return localDateISO(new Date(y, m, d - weekday(todayISO)));
+  if (period === 'month') return dateToISO({ y, m, d: 1 });
+  if (period === 'year')  return dateToISO({ y, m: 0, d: 1 });
+  return null;
+}
+
+export function inPeriod(entries, period, todayISO = TODAY_ISO) {
+  const from = periodStart(period, todayISO);
+  return from ? entries.filter(e => e.date >= from) : entries;
+}
+
 // Where the shell should go when loading the journal fails. A 401 is the
 // ordinary locked state. Anything else - a missing APP_PASSWORD (503), a
 // database error, a dead connection - means there is no journal to show, and
