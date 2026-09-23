@@ -90,7 +90,7 @@ function EntryHalf({ who, half, accent, onTap }) {
 
 // A moment is a pair or a lone half. Only the halves that exist are drawn,
 // and the hairline between them only when there are two.
-export function EntryBlock({ entry, accent, onHalfTap }) {
+export function EntryBlock({ entry, accent, onHalfTap, label }) {
   const present = [['monkey', entry.monkey], ['turtle', entry.turtle]]
     .filter(([, half]) => half);
 
@@ -115,7 +115,7 @@ export function EntryBlock({ entry, accent, onHalfTap }) {
       <div style={{
         fontSize: 11, color: '#9a958d', letterSpacing: 1.2,
         textTransform: 'uppercase', fontVariantNumeric: 'tabular-nums', fontWeight: 500,
-      }}>{entry.time}</div>
+      }}>{label ?? entry.time}</div>
       {parts}
     </div>
   );

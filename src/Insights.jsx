@@ -4,9 +4,10 @@
 import { useState } from 'react';
 import { ScreenShell, ScreenScroll } from './layout.jsx';
 import { MonkeyTiny, TurtleTiny } from './mascots.jsx';
+import { EntryBlock } from './Today.jsx';
 import {
   LANGS, PERIODS, computeStats, topLangs, listLangs, inPeriod, quietLangs,
-  translations,
+  translations, memoryPool, nextSeed, memoryLabel,
 } from './data.js';
 
 function Segmented({ value, onChange, options, accent }) {
@@ -141,6 +142,32 @@ function TranslationRow({ give, answers, n, accent }) {
   );
 }
 
+// One past moment, drawn at random. The seed lives here, so switching tabs
+// keeps it and simply reads a different pool.
+function RememberWhen({ pool, accent }) {
+  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
+  if (pool.length === 0) return null;
+  const memory = pool[seed % pool.length];
+
+  return (
+    <div data-memory style={{ marginTop: 12, paddingTop: 22, borderTop: '1px solid rgba(26,26,26,0.08)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div className="eyebrow">Remember when</div>
+        {pool.length > 1 && (
+          <button
+            onClick={() => setSeed(s => nextSeed(s, pool.length))}
+            style={{
+              border: 'none', background: 'transparent', padding: '4px 0',
+              cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 12.5, fontWeight: 500, color: accent,
+            }}>Another</button>
+        )}
+      </div>
+      <EntryBlock entry={memory} accent={accent} label={memoryLabel(memory)}/>
+    </div>
+  );
+}
+
 export function InsightsScreen({ entries, accent }) {
   const [view, setView] = useState('both');
   const [period, setPeriod] = useState('all');
@@ -270,6 +297,8 @@ export function InsightsScreen({ entries, accent }) {
               </div>
             </div>
           )}
+
+          <RememberWhen pool={memoryPool(entries, side)} accent={accent}/>
         </div>
       </ScreenScroll>
     </ScreenShell>

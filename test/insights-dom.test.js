@@ -47,6 +47,7 @@ async function mountInsights(entries) {
       assert.ok(b, 'no button labelled ' + label);
       await click(b);
     },
+    async click(label) { await this.tab(label); },
     button,
     async done() {
       await view.unmount();
@@ -213,6 +214,45 @@ test('the translation table is on Both only, and follows the period', async () =
     assert.equal(table(), null);
     await app.tab('Me');
     assert.equal(table(), null);
+  } finally {
+    await app.done();
+  }
+});
+
+test('Remember when shows one past moment, and Another always changes it', async () => {
+  const app = await mountInsights([
+    pair('p1', 'words', 'acts', '2000-01-01'),
+    monkeyOnly('m1', 'time', '2000-01-02'),
+    turtleOnly('t1', 'gifts', '2000-01-03'),
+  ]);
+  try {
+    const memory = () => app.text('[data-memory]');
+    assert.match(memory(), /TEST FAKE/, 'a memory is on screen');
+
+    let before = memory();
+    for (let i = 0; i < 6; i++) {
+      await app.click('Another');
+      assert.notEqual(memory(), before, 'Another repeated the moment on screen');
+      before = memory();
+    }
+
+    await app.tab('This week');
+    assert.match(memory(), /TEST FAKE/, 'memories are not bounded by the period');
+  } finally {
+    await app.done();
+  }
+});
+
+test('Him remembers only his halves, Me only mine', async () => {
+  const app = await mountInsights([pair('p1', 'words', 'acts', '2000-01-01')]);
+  try {
+    await app.tab('Him');
+    assert.match(app.text('[data-memory]'), /TEST FAKE - monkey p1/);
+    assert.doesNotMatch(app.text('[data-memory]'), /turtle p1/);
+    await app.tab('Me');
+    assert.match(app.text('[data-memory]'), /TEST FAKE - turtle p1/);
+    assert.doesNotMatch(app.text('[data-memory]'), /monkey p1/);
+    assert.equal(app.button('Another'), undefined, 'one memory, nothing to swap to');
   } finally {
     await app.done();
   }

@@ -346,6 +346,29 @@ export function translations(entries, limit = 3) {
   return rows.sort((a, b) => b.n - a.n).slice(0, limit);
 }
 
+// The moments "Remember when" draws from, across all time: a memory is not
+// bounded by the period on screen. Him and Me see only their own half, so a
+// pair shows up there as that one half.
+export function memoryPool(entries, side) {
+  if (side === 'both') return entries;
+  const other = side === 'monkey' ? 'turtle' : 'monkey';
+  return entries.filter(e => e[side]).map(e => ({ ...e, [other]: null }));
+}
+
+// The memory on screen is pool[seed % pool.length]. Stepping the seed by 1 to
+// len - 1 always lands on a different moment, so "Another" never repeats the
+// one it replaces.
+export function nextSeed(seed, len, r = Math.random()) {
+  return seed + 1 + Math.floor(r * Math.max(len - 1, 1));
+}
+
+// "Sat · Mar 14, 2026 · 09:04"
+export function memoryLabel(entry) {
+  const { y, m, d } = parseISO(entry.date);
+  return DAYS_SHORT[weekday(entry.date)] + ' · ' + MONTHS_SHORT[m] + ' ' + d + ', ' + y
+    + ' · ' + entry.time;
+}
+
 // Where the shell should go when loading the journal fails. A 401 is the
 // ordinary locked state. Anything else - a missing APP_PASSWORD (503), a
 // database error, a dead connection - means there is no journal to show, and
