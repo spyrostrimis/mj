@@ -79,14 +79,18 @@ src/
   Unavailable.jsx          Error screen for 503 / 500 / network load failures
   Today.jsx                Newest-first feed; opens Calendar
   Calendar.jsx             Monthly grid
-  Insights.jsx             Hairline bars, Him / Me / Both segmented control
+  Insights.jsx             Period picker (week / month / year / all time), hairline
+                           bars, Him / Me / Both, Pattern + quiet-lately line,
+                           Translation (Both only), Remember when
   Sheet.jsx                Bottom-sheet composer, exported as QuickSheet
                            (Monkey half + Turtle half)
   HalfSheet.jsx            Half-actions sheet: the tapped half as context, Delete, Cancel
   layout.jsx               Shared screen primitives
   mascots.jsx              Monkey + Turtle marks
   icons.jsx                UI icons
-  data.js                  Dates, love languages (LANGS), stats, loadFailure()
+  data.js                  Dates, love languages (LANGS), stats, loadFailure(),
+                           Insights helpers (periods, quietLangs, translations,
+                           memoryPool)
   api.js                   Fetch wrappers
 test/
   session.test.js          Password + signed-cookie helpers
@@ -95,7 +99,11 @@ test/
   entries-db.test.js       What gets stored, what GET returns, pair atomicity, DELETE
   contract.test.js         Composer payload -> real POST; delete wrapper -> real DELETE
   composer.test.js         Save gate: halfStatus / composerState / halfHint / newId
-  stats.test.js            Per-subject totals and topLang
+  stats.test.js            Per-subject totals, topLangs (ties), listLangs
+  periods.test.js          Where each Insights period starts; Sunday-first weeks
+  quiet.test.js            The quiet-lately line: 30-day window, cap at two
+  translations.test.js     What Turtle answers each Monkey language with
+  memory.test.js           Remember when: pool per tab, Another never repeats
   shell-gate.test.js       Where a failed load sends the shell (loadFailure)
   half-delete.test.js      removeHalf / restoreHalf / deleteFailure
   api-client.test.js       deleteEntry refuses to guess an id space; URL shape
@@ -104,6 +112,8 @@ test/
                            Tab trap, double-tap latch, composer stays parked
   tabs-dom.test.js         Bottom-tab navigation in jsdom: every tab reachable
                            from every other one
+  insights-dom.test.js     Insights in jsdom: per-tab Pattern, ties, periods,
+                           quiet line, Translation, Remember when
   auth-disabled.test.js    Middleware bypass: open only for the exact string '1'
   helpers/migrate.js       Applies migrations/ to a fresh in-memory node:sqlite DB
   helpers/d1.js            D1Database-shaped wrapper over node:sqlite
