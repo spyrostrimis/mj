@@ -192,3 +192,28 @@ test('the quiet line speaks for the tab it is on, whatever the period', async ()
     await app.done();
   }
 });
+
+test('the translation table is on Both only, and follows the period', async () => {
+  const app = await mountInsights([
+    pair('p1', 'words', 'time'),
+    pair('old', 'touch', 'acts', '2000-01-01'),
+    monkeyOnly('m1', 'gifts'),
+  ]);
+  try {
+    const table = () => app.text('[data-translation]');
+    assert.match(table(), /When he gives Words,\s*you answer with Time\.\s*1×/);
+    assert.match(table(), /When he gives Touch,\s*you answer with Acts\./);
+    assert.doesNotMatch(table(), /Gifts/, 'a lone half answers nothing');
+
+    await app.tab('This year');
+    assert.match(table(), /Words/, 'positive control');
+    assert.doesNotMatch(table(), /Touch/, 'the old pair is outside this year');
+
+    await app.tab('Him');
+    assert.equal(table(), null);
+    await app.tab('Me');
+    assert.equal(table(), null);
+  } finally {
+    await app.done();
+  }
+});

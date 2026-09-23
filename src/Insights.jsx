@@ -6,6 +6,7 @@ import { ScreenShell, ScreenScroll } from './layout.jsx';
 import { MonkeyTiny, TurtleTiny } from './mascots.jsx';
 import {
   LANGS, PERIODS, computeStats, topLangs, listLangs, inPeriod, quietLangs,
+  translations,
 } from './data.js';
 
 function Segmented({ value, onChange, options, accent }) {
@@ -120,11 +121,33 @@ function PairedBarRow({ label, monkeyN, turtleN, monkeyTotal, turtleTotal, accen
   );
 }
 
+// One line of the translation table: "When he gives Words, you answer with
+// Time." and how many times that happened.
+function TranslationRow({ give, answers, n, accent }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+      <div style={{
+        flex: 1,
+        fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
+        fontSize: 19, lineHeight: 1.3, color: '#1a1a1a',
+      }}>
+        When he gives <span style={{ color: accent }}>{listLangs([give])}</span>,
+        you answer with <span style={{ color: accent }}>{listLangs(answers, 'or')}</span>.
+      </div>
+      <div style={{ fontSize: 11, color: '#9a958d', fontVariantNumeric: 'tabular-nums' }}>
+        {n}×
+      </div>
+    </div>
+  );
+}
+
 export function InsightsScreen({ entries, accent }) {
   const [view, setView] = useState('both');
   const [period, setPeriod] = useState('all');
   const phrase = PERIODS.find(p => p.key === period).phrase;
-  const stats = computeStats(inPeriod(entries, period));
+  const shown = inPeriod(entries, period);
+  const stats = computeStats(shown);
+  const echoes = view === 'both' ? translations(shown) : [];
   const total = stats.momentCount;
   const halves = stats.monkeyTotal + stats.turtleTotal;
   const mTop  = topLangs(stats.monkey);
@@ -235,6 +258,15 @@ export function InsightsScreen({ entries, accent }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <TurtleTiny size={12} color="#9a958d"/> from me
+              </div>
+            </div>
+          )}
+
+          {echoes.length > 0 && (
+            <div data-translation style={{ marginTop: 12, paddingTop: 22, borderTop: '1px solid rgba(26,26,26,0.08)' }}>
+              <div className="eyebrow">Translation</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10 }}>
+                {echoes.map(r => <TranslationRow key={r.give} {...r} accent={accent}/>)}
               </div>
             </div>
           )}

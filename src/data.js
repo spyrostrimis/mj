@@ -263,11 +263,11 @@ export function topLangs(counts) {
   return LANGS.map(l => l.key).filter(k => counts[k] === bestN);
 }
 
-// "Time", "Time and Touch", "Words, Time and Touch".
-export function listLangs(keys) {
+// "Time", "Time and Touch", "Words, Time and Touch" - or "Time or Touch".
+export function listLangs(keys, conj = 'and') {
   const labels = keys.map(k => LANG_BY_KEY[k].label);
   if (labels.length <= 1) return labels.join('');
-  return labels.slice(0, -1).join(', ') + ' and ' + labels[labels.length - 1];
+  return labels.slice(0, -1).join(', ') + ' ' + conj + ' ' + labels[labels.length - 1];
 }
 
 // The windows Insights can be read over. A week starts on Sunday, the same
@@ -320,6 +320,30 @@ export function quietLangs(entries, side, todayISO = TODAY_ISO) {
   const low = Math.min(...Object.values(counts));
   const quiet = LANGS.map(l => l.key).filter(k => counts[k] === low);
   return quiet.length <= 2 ? quiet : [];
+}
+
+// What Turtle answers each of Monkey's languages with, read from moments that
+// hold both halves. One row per language Monkey gave, naming every answer tied
+// for most often, strongest rows first (LANGS order breaks a tie), at most
+// `limit` of them. A lone half says nothing about an answer, so it is skipped.
+export function translations(entries, limit = 3) {
+  const grid = {};
+  for (const e of entries) {
+    const give = e.monkey?.lang, answer = e.turtle?.lang;
+    if (!(give in LANG_BY_KEY) || !(answer in LANG_BY_KEY)) continue;
+    grid[give] ??= {};
+    grid[give][answer] = (grid[give][answer] || 0) + 1;
+  }
+
+  const rows = [];
+  for (const { key: give } of LANGS) {
+    if (!grid[give]) continue;
+    const n = Math.max(...Object.values(grid[give]));
+    const answers = LANGS.map(l => l.key).filter(k => grid[give][k] === n);
+    rows.push({ give, answers, n });
+  }
+  // Array.prototype.sort is stable, so equal counts keep LANGS order.
+  return rows.sort((a, b) => b.n - a.n).slice(0, limit);
 }
 
 // Where the shell should go when loading the journal fails. A 401 is the
