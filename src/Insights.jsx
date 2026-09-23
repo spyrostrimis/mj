@@ -4,7 +4,9 @@
 import { useState } from 'react';
 import { ScreenShell, ScreenScroll } from './layout.jsx';
 import { MonkeyTiny, TurtleTiny } from './mascots.jsx';
-import { LANGS, PERIODS, computeStats, topLangs, listLangs, inPeriod } from './data.js';
+import {
+  LANGS, PERIODS, computeStats, topLangs, listLangs, inPeriod, quietLangs,
+} from './data.js';
 
 function Segmented({ value, onChange, options, accent }) {
   return (
@@ -132,6 +134,10 @@ export function InsightsScreen({ entries, accent }) {
   const showM = view !== 'me'  && mTop.length > 0;
   const showT = view !== 'him' && tTop.length > 0;
 
+  const side  = { him: 'monkey', me: 'turtle', both: 'both' }[view];
+  const quiet = quietLangs(entries, side);
+  const quietFrom = { him: ' from him', me: ' from you', both: '' }[view];
+
   const sorted = [...LANGS].sort((a, b) => {
     if (view === 'him') return stats.monkey[b.key] - stats.monkey[a.key];
     if (view === 'me')  return stats.turtle[b.key] - stats.turtle[a.key];
@@ -187,7 +193,7 @@ export function InsightsScreen({ entries, accent }) {
             })
           )}
 
-          {(showM || showT) && (
+          {(showM || showT || quiet.length > 0) && (
             <div data-pattern style={{ marginTop: 12, paddingTop: 22, borderTop: '1px solid rgba(26,26,26,0.08)' }}>
               <div className="eyebrow">Pattern</div>
               <div style={{
@@ -207,6 +213,15 @@ export function InsightsScreen({ entries, accent }) {
                       : 'You return it in'} <span style={{ color: accent }}>{listLangs(tTop)}</span>.</>
                 )}
               </div>
+              {quiet.length > 0 && (
+                <div data-quiet style={{
+                  fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
+                  fontSize: 17, lineHeight: 1.35, fontStyle: 'italic',
+                  color: '#9a958d', marginTop: 10,
+                }}>
+                  {listLangs(quiet)} {quiet.length > 1 ? 'have' : 'has'} been quiet{quietFrom} lately.
+                </div>
+              )}
             </div>
           )}
 

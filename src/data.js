@@ -293,6 +293,35 @@ export function inPeriod(entries, period, todayISO = TODAY_ISO) {
   return from ? entries.filter(e => e.date >= from) : entries;
 }
 
+// "Lately" is the last 30 days, today included. It is its own window, not
+// the period Insights is showing: the quiet line always looks at the recent
+// past.
+export const LATELY_DAYS = 30;
+
+// The languages a side has used least lately, in LANGS order. side is
+// 'monkey', 'turtle' or 'both'. Empty when there is nothing to say: nothing
+// logged lately, every language level, or three or more tied at the bottom -
+// by then too little is logged to single any of them out.
+export function quietLangs(entries, side, todayISO = TODAY_ISO) {
+  const { y, m, d } = parseISO(todayISO);
+  const from = localDateISO(new Date(y, m, d - (LATELY_DAYS - 1)));
+  const counts = Object.fromEntries(LANGS.map(l => [l.key, 0]));
+  let any = false;
+
+  for (const e of entries) {
+    if (e.date < from || e.date > todayISO) continue;
+    for (const who of side === 'both' ? ['monkey', 'turtle'] : [side]) {
+      const lang = e[who]?.lang;
+      if (lang in counts) { counts[lang]++; any = true; }
+    }
+  }
+  if (!any) return [];
+
+  const low = Math.min(...Object.values(counts));
+  const quiet = LANGS.map(l => l.key).filter(k => counts[k] === low);
+  return quiet.length <= 2 ? quiet : [];
+}
+
 // Where the shell should go when loading the journal fails. A 401 is the
 // ordinary locked state. Anything else - a missing APP_PASSWORD (503), a
 // database error, a dead connection - means there is no journal to show, and

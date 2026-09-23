@@ -169,3 +169,26 @@ test('an empty period says so and claims no Pattern', async () => {
     await app.done();
   }
 });
+
+test('the quiet line speaks for the tab it is on, whatever the period', async () => {
+  // Today: Monkey has used everything but Gifts; Turtle only Acts and Time.
+  const entries = [
+    pair('p1', 'words', 'acts'), pair('p2', 'acts', 'time'),
+    pair('p3', 'touch', 'acts'), monkeyOnly('m1', 'time'),
+  ];
+  const app = await mountInsights(entries);
+  try {
+    const quiet = () => app.text('[data-quiet]');
+    assert.equal(quiet(), 'Gifts has been quiet lately.');
+    await app.tab('Him');
+    assert.equal(quiet(), 'Gifts has been quiet from him lately.');
+    await app.tab('Me');
+    assert.equal(quiet(), null, 'three unused is too many to name');
+    assert.match(app.pattern(), /You lean into Acts\./, 'positive control');
+    await app.tab('Him');
+    await app.tab('This year');
+    assert.equal(quiet(), 'Gifts has been quiet from him lately.', 'the period does not move it');
+  } finally {
+    await app.done();
+  }
+});
