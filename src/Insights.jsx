@@ -98,6 +98,10 @@ export function InsightsScreen({ entries, accent }) {
   const mTop  = topLang(stats.monkey);
   const tTop  = topLang(stats.turtle);
 
+  // Him and Me each speak for one side only; Both reads the two together.
+  const showM = view !== 'me'  && mTop;
+  const showT = view !== 'him' && tTop;
+
   const sorted = [...LANGS].sort((a, b) => {
     if (view === 'him') return stats.monkey[b.key] - stats.monkey[a.key];
     if (view === 'me')  return stats.turtle[b.key] - stats.turtle[a.key];
@@ -151,8 +155,8 @@ export function InsightsScreen({ entries, accent }) {
             })
           )}
 
-          {(mTop || tTop) && (
-            <div style={{ marginTop: 12, paddingTop: 22, borderTop: '1px solid rgba(26,26,26,0.08)' }}>
+          {(showM || showT) && (
+            <div data-pattern style={{ marginTop: 12, paddingTop: 22, borderTop: '1px solid rgba(26,26,26,0.08)' }}>
               <div className="eyebrow">Pattern</div>
               <div style={{
                 fontFamily: "'Instrument Serif', 'EB Garamond', Georgia, serif",
@@ -161,12 +165,12 @@ export function InsightsScreen({ entries, accent }) {
               }}>
                 {/* Each line only appears once that side has something logged,
                     so the journal never claims a lean it has not seen. */}
-                {mTop && (
+                {showM && (
                   <>Monkey leans into <span style={{ color: accent }}>{LANG_BY_KEY[mTop].label}</span>.</>
                 )}
-                {mTop && tTop && <br/>}
-                {tTop && (
-                  <>You return it in <span style={{ color: accent }}>{LANG_BY_KEY[tTop].label}</span>.</>
+                {showM && showT && <br/>}
+                {showT && (
+                  <>{view === 'me' ? 'You lean into' : 'You return it in'} <span style={{ color: accent }}>{LANG_BY_KEY[tTop].label}</span>.</>
                 )}
               </div>
             </div>
