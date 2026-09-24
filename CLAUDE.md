@@ -101,7 +101,7 @@ test/
   composer.test.js         Save gate: halfStatus / composerState / halfHint / newId
   stats.test.js            Per-subject totals, topLangs (ties), listLangs
   periods.test.js          Where each Insights period starts; Sunday-first weeks
-  quiet.test.js            The quiet-lately line: 30-day window, cap at two
+  quiet.test.js            The quiet line: reads the period given, cap at two
   translations.test.js     What Turtle answers each Monkey language with
   memory.test.js           Remember when: pool per tab, Another never repeats
   shell-gate.test.js       Where a failed load sends the shell (loadFailure)
