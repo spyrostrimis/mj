@@ -148,6 +148,20 @@ test('there is no moment count on the page', async () => {
   }
 });
 
+test('the period row sits under Him / Me / Both, and the title above both', async () => {
+  const app = await mountInsights(BOTH_SIDES());
+  try {
+    const FOLLOWING = 4;   // Node.DOCUMENT_POSITION_FOLLOWING
+    const after = (a, b) => !!(a.compareDocumentPosition(b) & FOLLOWING);
+    const title = app.container.querySelector('h1.page-title');
+    assert.ok(after(title, app.button('Him')), 'the title comes first');
+    assert.ok(after(app.button('Both'), app.button('This week')), 'the period row follows Both');
+    assert.ok(!after(app.button('This week'), app.button('Both')), 'positive control: the order is not symmetric');
+  } finally {
+    await app.done();
+  }
+});
+
 test('the period narrows the bars and the Pattern', async () => {
   const app = await mountInsights([
     pair('p1', 'time', 'acts'),

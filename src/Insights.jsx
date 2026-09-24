@@ -42,7 +42,7 @@ function Segmented({ value, onChange, options, accent }) {
 }
 
 // The period reads as a row of eyebrows: the chosen one in the accent, the
-// rest quiet. It sits where the fixed "All time" eyebrow used to.
+// rest quiet. It sits under the Him / Me / Both control.
 function PeriodPicker({ value, onChange, accent }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
@@ -197,8 +197,7 @@ export function InsightsScreen({ entries, accent }) {
   return (
     <ScreenShell>
       <div style={{ padding: '18px 24px 16px' }}>
-        <PeriodPicker value={period} onChange={setPeriod} accent={accent}/>
-        <h1 className="page-title" style={{ marginTop: 4 }}>Love, broken down.</h1>
+        <h1 className="page-title">Love, broken down.</h1>
       </div>
 
       <div style={{ padding: '0 24px 6px' }}>
@@ -209,6 +208,9 @@ export function InsightsScreen({ entries, accent }) {
             { value: 'me',   label: 'Me' },
             { value: 'both', label: 'Both' },
           ]}/>
+        <div style={{ marginTop: 12 }}>
+          <PeriodPicker value={period} onChange={setPeriod} accent={accent}/>
+        </div>
       </div>
 
       <ScreenScroll>
