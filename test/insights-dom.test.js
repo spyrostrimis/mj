@@ -138,6 +138,54 @@ test('Me names its own tie as a split', async () => {
   }
 });
 
+test('three tied at the top are a spread, named', async () => {
+  const app = await mountInsights(['words', 'acts', 'time'].flatMap((l, i) =>
+    [monkeyOnly('m' + i, l), turtleOnly('t' + i, l)]));
+  try {
+    assert.match(app.pattern(), /Monkey spreads it across Words, Acts and Time\./);
+    assert.match(app.pattern(), /You return it across Words, Acts and Time\./);
+    await app.tab('Me');
+    assert.match(app.pattern(), /You spread it across Words, Acts and Time\./);
+  } finally {
+    await app.done();
+  }
+});
+
+test('four tied are counted, five are all five', async () => {
+  const LANGS5 = ['words', 'acts', 'touch', 'gifts', 'time'];
+  const app = await mountInsights([
+    ...LANGS5.slice(0, 4).map((l, i) => monkeyOnly('m' + i, l)),
+    ...LANGS5.map((l, i) => turtleOnly('t' + i, l)),
+  ]);
+  try {
+    assert.match(app.pattern(), /Monkey spreads it across four languages\./);
+    assert.match(app.pattern(), /You return it across all five\./);
+    assert.doesNotMatch(app.pattern(), /Words, Acts/, 'no list for four or five');
+    await app.tab('Me');
+    assert.match(app.pattern(), /You spread it across all five\./);
+    await app.tab('Him');
+    assert.match(app.pattern(), /Monkey spreads it across four languages\./);
+  } finally {
+    await app.done();
+  }
+});
+
+test('a two-way tie still reads as a split', async () => {
+  // Positive control for the spread cases: two is named as before.
+  const app = await mountInsights([
+    monkeyOnly('m1', 'words'), monkeyOnly('m2', 'time'),
+    turtleOnly('t1', 'acts'), turtleOnly('t2', 'gifts'),
+  ]);
+  try {
+    assert.match(app.pattern(), /Monkey splits between Words and Time\./);
+    assert.match(app.pattern(), /You return it in Acts and Gifts\./);
+    await app.tab('Me');
+    assert.match(app.pattern(), /You split between Acts and Gifts\./);
+  } finally {
+    await app.done();
+  }
+});
+
 test('there is no moment count on the page', async () => {
   const app = await mountInsights(BOTH_SIDES());
   try {

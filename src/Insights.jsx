@@ -122,6 +122,22 @@ function PairedBarRow({ label, monkeyN, turtleN, monkeyTotal, turtleTotal, accen
   );
 }
 
+// How the Pattern names a lean. One or two languages are a lean or a split;
+// three or more tied at the top are a spread, and a list of four or five
+// would say nothing, so those are counted instead of named.
+const leanSize = (keys) => (keys.length === 1 ? 'one' : keys.length === 2 ? 'two' : 'spread');
+const LEAN_VERB = {
+  monkey: { one: 'leans into',    two: 'splits between',    spread: 'spreads it across' },
+  me:     { one: 'You lean into', two: 'You split between', spread: 'You spread it across' },
+  reply:  { one: 'You return it in', two: 'You return it in', spread: 'You return it across' },
+};
+
+function leanObject(keys) {
+  if (keys.length === 5) return 'all five';
+  if (keys.length === 4) return 'four languages';
+  return listLangs(keys);
+}
+
 // "Touch has been quiet from him this week." The year reads "lately", and
 // all time has no "been": over the whole journal it is simply the quiet one.
 const QUIET_WHEN = { week: ' this week', month: ' this month', year: ' lately' };
@@ -265,13 +281,11 @@ export function InsightsScreen({ entries, accent }) {
                 {/* Each line only appears once that side has something logged,
                     so the journal never claims a lean it has not seen. */}
                 {showM && (
-                  <>Monkey {mTop.length > 1 ? 'splits between' : 'leans into'} <span style={{ color: accent }}>{listLangs(mTop)}</span>.</>
+                  <>Monkey {LEAN_VERB.monkey[leanSize(mTop)]} <span style={{ color: accent }}>{leanObject(mTop)}</span>.</>
                 )}
                 {showM && showT && <br/>}
                 {showT && (
-                  <>{view === 'me'
-                      ? (tTop.length > 1 ? 'You split between' : 'You lean into')
-                      : 'You return it in'} <span style={{ color: accent }}>{listLangs(tTop)}</span>.</>
+                  <>{LEAN_VERB[view === 'me' ? 'me' : 'reply'][leanSize(tTop)]} <span style={{ color: accent }}>{leanObject(tTop)}</span>.</>
                 )}
               </div>
               {quiet.length > 0 && (
