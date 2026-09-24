@@ -175,7 +175,6 @@ export function InsightsScreen({ entries, accent }) {
   const shown = inPeriod(entries, period);
   const stats = computeStats(shown);
   const echoes = view === 'both' ? translations(shown) : [];
-  const total = stats.momentCount;
   const halves = stats.monkeyTotal + stats.turtleTotal;
   const mTop  = topLangs(stats.monkey);
   const tTop  = topLangs(stats.turtle);
@@ -200,9 +199,6 @@ export function InsightsScreen({ entries, accent }) {
       <div style={{ padding: '18px 24px 16px' }}>
         <PeriodPicker value={period} onChange={setPeriod} accent={accent}/>
         <h1 className="page-title" style={{ marginTop: 4 }}>Love, broken down.</h1>
-        <div data-count style={{ fontSize: 13.5, color: '#9a958d', marginTop: 6 }}>
-          {total} {total === 1 ? 'moment' : 'moments'} {period === 'all' ? 'logged' : phrase}.
-        </div>
       </div>
 
       <div style={{ padding: '0 24px 6px' }}>
