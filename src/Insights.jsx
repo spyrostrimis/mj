@@ -196,7 +196,7 @@ export function InsightsScreen({ entries, accent }) {
 
   return (
     <ScreenShell>
-      <div style={{ padding: '18px 24px 16px' }}>
+      <div style={{ padding: '22px 24px 22px' }}>
         <h1 className="page-title">Love, broken down.</h1>
       </div>
 
@@ -208,7 +208,7 @@ export function InsightsScreen({ entries, accent }) {
             { value: 'me',   label: 'Me' },
             { value: 'both', label: 'Both' },
           ]}/>
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 18 }}>
           <PeriodPicker value={period} onChange={setPeriod} accent={accent}/>
         </div>
       </div>
