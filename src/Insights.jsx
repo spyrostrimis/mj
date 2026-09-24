@@ -122,6 +122,20 @@ function PairedBarRow({ label, monkeyN, turtleN, monkeyTotal, turtleTotal, accen
   );
 }
 
+// "Touch has been quiet from him this week." The year reads "lately", and
+// all time has no "been": over the whole journal it is simply the quiet one.
+const QUIET_WHEN = { week: ' this week', month: ' this month', year: ' lately' };
+const QUIET_FROM = { him: ' from him', me: ' from you', both: '' };
+
+function quietLine(quiet, view, period) {
+  const many = quiet.length > 1;
+  const from = QUIET_FROM[view];
+  if (period === 'all') {
+    return `${listLangs(quiet)} ${many ? 'are the quiet ones' : 'is the quiet one'}${from}.`;
+  }
+  return `${listLangs(quiet)} ${many ? 'have' : 'has'} been quiet${from}${QUIET_WHEN[period]}.`;
+}
+
 // One line of the translation table: "When he gives Words, you answer with
 // Time." and how many times that happened.
 function TranslationRow({ give, answers, n, accent }) {
@@ -184,8 +198,7 @@ export function InsightsScreen({ entries, accent }) {
   const showT = view !== 'him' && tTop.length > 0;
 
   const side  = { him: 'monkey', me: 'turtle', both: 'both' }[view];
-  const quiet = quietLangs(entries, side);
-  const quietFrom = { him: ' from him', me: ' from you', both: '' }[view];
+  const quiet = quietLangs(shown, side);
 
   const sorted = [...LANGS].sort((a, b) => {
     if (view === 'him') return stats.monkey[b.key] - stats.monkey[a.key];
@@ -267,7 +280,7 @@ export function InsightsScreen({ entries, accent }) {
                   fontSize: 17, lineHeight: 1.35, fontStyle: 'italic',
                   color: '#9a958d', marginTop: 10,
                 }}>
-                  {listLangs(quiet)} {quiet.length > 1 ? 'have' : 'has'} been quiet{quietFrom} lately.
+                  {quietLine(quiet, view, period)}
                 </div>
               )}
             </div>

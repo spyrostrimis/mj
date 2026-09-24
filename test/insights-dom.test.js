@@ -194,7 +194,7 @@ test('an empty period says so and claims no Pattern', async () => {
   }
 });
 
-test('the quiet line speaks for the tab it is on, whatever the period', async () => {
+test('the quiet line speaks for the tab it is on, in the words of the period', async () => {
   // Today: Monkey has used everything but Gifts; Turtle only Acts and Time.
   const entries = [
     pair('p1', 'words', 'acts'), pair('p2', 'acts', 'time'),
@@ -203,15 +203,41 @@ test('the quiet line speaks for the tab it is on, whatever the period', async ()
   const app = await mountInsights(entries);
   try {
     const quiet = () => app.text('[data-quiet]');
-    assert.equal(quiet(), 'Gifts has been quiet lately.');
+    assert.equal(quiet(), 'Gifts is the quiet one.');
     await app.tab('Him');
-    assert.equal(quiet(), 'Gifts has been quiet from him lately.');
+    assert.equal(quiet(), 'Gifts is the quiet one from him.');
     await app.tab('Me');
     assert.equal(quiet(), null, 'three unused is too many to name');
     assert.match(app.pattern(), /You lean into Acts\./, 'positive control');
+
     await app.tab('Him');
+    await app.tab('This week');
+    assert.equal(quiet(), 'Gifts has been quiet from him this week.');
+    await app.tab('This month');
+    assert.equal(quiet(), 'Gifts has been quiet from him this month.');
     await app.tab('This year');
-    assert.equal(quiet(), 'Gifts has been quiet from him lately.', 'the period does not move it');
+    assert.equal(quiet(), 'Gifts has been quiet from him lately.');
+  } finally {
+    await app.done();
+  }
+});
+
+test('the quiet line never contradicts the bars of its period', async () => {
+  // The live case that exposed the old 30-day window: this week, all five of
+  // mine are level, while over a longer stretch Touch was my rarest.
+  const entries = [
+    turtleOnly('t1', 'words'), turtleOnly('t2', 'acts'), turtleOnly('t3', 'touch'),
+    turtleOnly('t4', 'gifts'), turtleOnly('t5', 'time'),
+    ...['words', 'acts', 'gifts', 'time'].map((l, i) =>
+      turtleOnly('old' + i, l, '2000-01-01')),
+  ];
+  const app = await mountInsights(entries);
+  try {
+    await app.tab('Me');
+    assert.equal(app.text('[data-quiet]'), 'Touch is the quiet one from you.',
+      'positive control: over all time Touch really is rarest');
+    await app.tab('This week');
+    assert.equal(app.text('[data-quiet]'), null, 'this week every language is level');
   } finally {
     await app.done();
   }

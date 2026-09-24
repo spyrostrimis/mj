@@ -1,57 +1,52 @@
-// The quiet line: which languages a side has used least over the last 30
-// days. Every case pins its own "today".
+// The quiet line: which languages a side has used least, over whatever
+// moments it is handed - the period on screen.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { quietLangs } from '../src/data.js';
 
-const TODAY = '2026-09-23';
-const moment = (date, m, t) => ({
-  id: date + m + t, date,
+const moment = (m, t) => ({
   monkey: m ? { lang: m } : null,
   turtle: t ? { lang: t } : null,
 });
 
-// Monkey has used four of five lately, gifts not at all.
+// Monkey has used four of five, gifts not at all.
 const FOUR_OF_FIVE = [
-  moment('2026-09-23', 'words', 'acts'),
-  moment('2026-09-20', 'acts', 'acts'),
-  moment('2026-09-10', 'touch', 'time'),
-  moment('2026-08-25', 'time', null),
+  moment('words', 'acts'),
+  moment('acts', 'acts'),
+  moment('touch', 'time'),
+  moment('time', null),
 ];
 
-test('the one language a side has not used lately is the quiet one', () => {
-  assert.deepEqual(quietLangs(FOUR_OF_FIVE, 'monkey', TODAY), ['gifts']);
+test('the one language a side has not used is the quiet one', () => {
+  assert.deepEqual(quietLangs(FOUR_OF_FIVE, 'monkey'), ['gifts']);
 });
 
-test('lately is the last 30 days, today included', () => {
-  // 2026-08-25 is day 30 counting back from today; 2026-08-24 is day 31.
-  const inside = [...FOUR_OF_FIVE, moment('2026-08-25', 'gifts', null)];
-  const outside = [...FOUR_OF_FIVE, moment('2026-08-24', 'gifts', null)];
-  const levelled = quietLangs(inside, 'monkey', TODAY);
-  assert.deepEqual(levelled, [], 'on day 30 gifts counts, so every language is level');
-  assert.deepEqual(quietLangs(outside, 'monkey', TODAY), ['gifts'], 'day 31 does not count');
+test('every moment handed in counts, whatever its date', () => {
+  // The window is the caller's period now; quietLangs keeps no clock of its own.
+  const old = { date: '2000-01-01', monkey: { lang: 'gifts' }, turtle: null };
+  assert.deepEqual(quietLangs([...FOUR_OF_FIVE, old], 'monkey'), [],
+    'gifts from 2000 levels every language');
+  assert.deepEqual(quietLangs(FOUR_OF_FIVE, 'monkey'), ['gifts'], 'positive control');
 });
 
 test('two tied at the bottom are both named; three are too many', () => {
-  const two = [
-    moment('2026-09-20', 'words', null), moment('2026-09-20', 'words', null),
-    moment('2026-09-21', 'acts', null), moment('2026-09-22', 'touch', null),
-  ];
-  assert.deepEqual(quietLangs(two, 'monkey', TODAY), ['gifts', 'time']);
+  const two = [moment('words'), moment('words'), moment('acts'), moment('touch')];
+  assert.deepEqual(quietLangs(two, 'monkey'), ['gifts', 'time']);
 
-  const three = [moment('2026-09-20', 'words', null), moment('2026-09-21', 'acts', null)];
-  assert.deepEqual(quietLangs(three, 'monkey', TODAY), []);
+  const three = [moment('words'), moment('acts')];
+  assert.deepEqual(quietLangs(three, 'monkey'), []);
 });
 
 test('each side is read on its own, and both reads them together', () => {
   // Turtle has used acts and time only; Monkey fills in the rest.
-  assert.deepEqual(quietLangs(FOUR_OF_FIVE, 'turtle', TODAY), [], 'three unused is too many');
-  assert.deepEqual(quietLangs(FOUR_OF_FIVE, 'both', TODAY), ['gifts']);
+  assert.deepEqual(quietLangs(FOUR_OF_FIVE, 'turtle'), [], 'three unused is too many');
+  assert.deepEqual(quietLangs(FOUR_OF_FIVE, 'both'), ['gifts']);
 });
 
-test('nothing logged lately means nothing to say', () => {
-  assert.deepEqual(quietLangs([moment('2026-01-01', 'words', null)], 'monkey', TODAY), []);
-  assert.deepEqual(quietLangs([], 'both', TODAY), []);
+test('every language level, or nothing logged, means nothing to say', () => {
+  const level = ['words', 'acts', 'touch', 'gifts', 'time'].map(l => moment(null, l));
+  assert.deepEqual(quietLangs(level, 'turtle'), []);
+  assert.deepEqual(quietLangs([], 'both'), []);
 });

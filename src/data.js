@@ -293,23 +293,18 @@ export function inPeriod(entries, period, todayISO = TODAY_ISO) {
   return from ? entries.filter(e => e.date >= from) : entries;
 }
 
-// "Lately" is the last 30 days, today included. It is its own window, not
-// the period Insights is showing: the quiet line always looks at the recent
-// past.
-export const LATELY_DAYS = 30;
-
-// The languages a side has used least lately, in LANGS order. side is
-// 'monkey', 'turtle' or 'both'. Empty when there is nothing to say: nothing
-// logged lately, every language level, or three or more tied at the bottom -
-// by then too little is logged to single any of them out.
-export function quietLangs(entries, side, todayISO = TODAY_ISO) {
-  const { y, m, d } = parseISO(todayISO);
-  const from = localDateISO(new Date(y, m, d - (LATELY_DAYS - 1)));
+// The languages a side has used least, in LANGS order. side is 'monkey',
+// 'turtle' or 'both'. The caller passes the moments of the period on screen,
+// so the line can never contradict the bars above it - it used to read its
+// own 30-day window and called Touch quiet under a week where Touch was level
+// with everything else. Empty when there is nothing to say: nothing logged,
+// every language level, or three or more tied at the bottom - by then too
+// little is logged to single any of them out.
+export function quietLangs(entries, side) {
   const counts = Object.fromEntries(LANGS.map(l => [l.key, 0]));
   let any = false;
 
   for (const e of entries) {
-    if (e.date < from || e.date > todayISO) continue;
     for (const who of side === 'both' ? ['monkey', 'turtle'] : [side]) {
       const lang = e[who]?.lang;
       if (lang in counts) { counts[lang]++; any = true; }
